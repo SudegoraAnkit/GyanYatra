@@ -10,37 +10,59 @@
 	</parent>
 	<groupId>com.sudegoraankit</groupId>
 	<artifactId>gyanyatra</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>GyanYatra</name>
 	<description>An AI based project to help in Gyan Yatra</description>
+	<packaging>pom</packaging>
 	<url/>
 	<licenses>
-		<license/>
+		<license>
+			<comments></comments>
+			<distribution></distribution>
+			<name></name>
+			<url></url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Ankit Sudegora</name>
+			<email>ankitrai.dev@gmail.com</email>
+			<organization>GyanYatra</organization>
+			<organizationUrl>https://gyanyatra.com</organizationUrl>	
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection></connection>
+		<developerConnection></developerConnection>
+		<tag></tag>
+		<url></url>
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<spring-ai.version>2.0.0-M1</spring-ai.version>
 	</properties>
+
 	<dependencies>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.42</version>
 		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version> <!-- Uses the property above -->
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 
 	<build>
 		<plugins>
@@ -50,5 +72,34 @@
 			</plugin>
 		</plugins>
 	</build>
+	<modules>
+        <module>gyanyatra_core</module>
+        <module>gyanyatra_ai</module>
+        <module>gyanyatra_api</module>
+    </modules>
+
+	<!-- This block is ALL you need to add for repositories -->
+	<repositories>
+		<!-- 1. Spring Milestones (for 1.0.0-M5, etc.) -->
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+		<!-- 2. Spring Snapshots (if using SNAPSHOT versions) -->
+		<repository>
+			<id>spring-snapshots</id>
+			<name>Spring Snapshots</name>
+			<url>https://repo.spring.io/snapshot</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+		</repository>
+	</repositories>
+	<!-- Maven Central is implicit/invisible but always active -->
+
 
 </project>

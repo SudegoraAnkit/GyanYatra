@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: gyan-yatra-service
+
+  # --- 1. MongoDB Configuration ---
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/gyanyatra
+      # auto-index-creation: true
+
+  # --- 2. RabbitMQ Configuration ---
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        concurrency: 5
+        max-concurrency: 10
+        retry:
+          enabled: true
+          initial-interval: 2s
+          max-attempts: 3
+
+  # --- 3. Spring AI Configuration (OpenAI) ---
+  ai:
+    openai:
+      api-key: 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
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
+          response-format:
+            type: json_object
+
+  # --- 4. Performance (Virtual Threads) ---
+  threads:
+    virtual:
+      enabled: true
+
+# --- 5. Logging Levels ---
+logging:
+  level:
+    root: INFO
+    com.sudegoraankit.gyanyatra: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.ai: INFO
+
+# --- 6. Server & API Configuration ---
+server:
+  port: 8080
+  error:
+    include-message: always
