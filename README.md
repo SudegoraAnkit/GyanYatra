@@ -68,4 +68,4 @@ Contributions are welcome! Please follow these steps:
 
 ## Author
 
-[Your name/contact information]
+[Ankit Rai](https://www.linkedin.com/in/ankitsudegora/)
