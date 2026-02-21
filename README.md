@@ -64,7 +64,7 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-[Specify your license type here]
+PUBLIC
 
 ## Author
 
