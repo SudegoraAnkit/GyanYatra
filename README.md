@@ -1,5 +1,4 @@
-# GyanYatra
-An AI Based Learning system which helps to retain the knowledge
+
 # GyanYatra
 
 An AI-Based Learning System that helps retain knowledge through intelligent learning techniques.
