@@ -68,3 +68,8 @@ PUBLIC
 ## Author
 
 [Ankit Rai](https://www.linkedin.com/in/ankitsudegora/)
+
+
+----
+
+# Video -> Notes -> AI Summary
