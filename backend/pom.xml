@@ -40,13 +40,14 @@
 	<properties>
 		<java.version>25</java.version>
 		<spring-ai.version>2.0.0-M1</spring-ai.version>
+		<lombok.version>1.18.40</lombok.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.42</version>
+			<version>${lombok.version}</version>
 		</dependency>
 
 	</dependencies>
@@ -71,6 +72,23 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.13.0</version> <configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 	<modules>
         <module>gyanyatra_core</module>

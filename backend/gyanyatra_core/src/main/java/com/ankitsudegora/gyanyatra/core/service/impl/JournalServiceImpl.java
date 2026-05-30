@@ -32,7 +32,7 @@ class JournalServiceImpl implements JournalService {
         }
 
         log.setCreatedAt(LocalDateTime.now());
-        log.setVerified(false); // Awaiting Acharya's insight
+        log.setIsVerified(false); // Awaiting Acharya's insight
         log.setNoteScore(0);    // Score starts at zero
 
         return repository.save(log);
@@ -44,8 +44,8 @@ class JournalServiceImpl implements JournalService {
                 .orElseThrow(() -> new ResourceNotFoundException("Wisdom Log", logId));
 
         journal.setNoteScore(analysis.score());
-        journal.setVerified(true);
-        // Assuming AiAnalysis is set by the AI module before calling this
+        journal.setIsVerified(true);
+        journal.setAiAnalysis(analysis);
 
         repository.save(journal);
     }

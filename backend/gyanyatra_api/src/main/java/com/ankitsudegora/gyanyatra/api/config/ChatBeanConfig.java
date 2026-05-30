@@ -2,27 +2,26 @@ package com.ankitsudegora.gyanyatra.api.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ChatBeanConfig {
     /**
-     * Define the ChatClient bean.
-     * Spring AI provides the ChatClient.Builder automatically based on
-     * the Gemini starter present in the classpath.
+     * Create a ChatClient using SPECIFICALLY the Google Gemini ChatModel.
      */
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder) {
-        return builder.build();
+    public ChatClient chatClient(ChatModel chatModel) {
+        return ChatClient.builder(chatModel)
+                .defaultSystem("You are a helpful AI assistant for Gyan Yatra.")
+                .build();
     }
 
-    /**
-     * Define the ChatClient.Builder bean explicitly.
-     * This uses the ChatModel (Gemini/OpenAI) provided by the starter.
-     */
-    @Bean
-    public ChatClient.Builder chatClientBuilder(ChatModel chatModel) {
-        return ChatClient.builder(chatModel);
-    }
+//    @Bean
+//    public ChatClient chatClient(@Qualifier("openAiChatModel") ChatModel chatModel) {
+//        return ChatClient.builder(chatModel)
+//                .defaultSystem("You are a helpful AI assistant for Gyan Yatra.")
+//                .build();
+//    }
 }

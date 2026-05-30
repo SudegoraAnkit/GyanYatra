@@ -1,6 +1,7 @@
 package com.ankitsudegora.gyanyatra.api.controller;
 
 import com.ankitsudegora.gyanyatra.ai.config.AcharyaMessagingConfig;
+import com.ankitsudegora.gyanyatra.api.dto.JournalRequest;
 import com.ankitsudegora.gyanyatra.core.exception.GyanYatraException;
 import com.ankitsudegora.gyanyatra.core.model.Journal;
 import com.ankitsudegora.gyanyatra.core.service.JournalService;
@@ -34,10 +35,15 @@ public class JournalController {
      * This saves the 'Draft' version before AI analysis.
      */
     @PostMapping
-    public ResponseEntity<Journal> createWisdomLog(@RequestBody Journal journal) {
-        log.info("Recording new Wisdom Log for Seeker: {}", journal.getUserId());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(journalService.submitLog(journal));
+    public ResponseEntity<Journal> createWisdomLog(@RequestBody JournalRequest request) {
+        Journal journal = Journal.builder()
+                .userId(request.userId())
+                .videoUrl(request.videoUrl())
+                .userNotes(request.userNotes())
+                .isVerified(false) // Security: System sets this, not user
+                .build();
+
+        return ResponseEntity.ok(journalService.submitLog(journal));
     }
 
     /**
@@ -55,7 +61,7 @@ public class JournalController {
                 throw new GyanYatraException("Journal Not Found", "GY-4-4", HttpStatus.BAD_REQUEST);
             }
             // Push the existing journal to RabbitMQ for scoring
-            rabbitTemplate.convertAndSend(AcharyaMessagingConfig.WISDOM_LOG_QUEUE, journal.get());
+            rabbitTemplate.convertAndSend("", AcharyaMessagingConfig.WISDOM_LOG_QUEUE, journal.get());
 
             return ResponseEntity.accepted()
                     .body("Acharya is now meditating on your insights. Your Mastery Map will update shortly.");

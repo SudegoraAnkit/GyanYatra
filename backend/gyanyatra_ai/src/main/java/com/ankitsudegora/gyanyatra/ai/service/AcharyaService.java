@@ -3,10 +3,12 @@ package com.ankitsudegora.gyanyatra.ai.service;
 import com.ankitsudegora.gyanyatra.core.model.AcharyaAnalysis;
 import com.ankitsudegora.gyanyatra.core.model.Journal;
 import com.ankitsudegora.gyanyatra.core.model.Lesson;
+import com.ankitsudegora.gyanyatra.core.repository.LessonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.Objects;
 public class AcharyaService {
 
     private final ChatClient chatClient;
+    @Autowired
+    private LessonRepository lessonRepository;
 
     /**
      * The Master Sutra (System Prompt) for the Acharya.
@@ -92,6 +96,7 @@ public class AcharyaService {
         lesson.setTitle(discovery.title());
         lesson.setUrl(videoUrl);
         lesson.setConceptsCovered(discovery.concepts());
+        lessonRepository.save(lesson);
         return lesson;
     }
 }
