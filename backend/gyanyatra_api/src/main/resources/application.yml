@@ -26,7 +26,7 @@
 #  # --- 3. Spring AI Configuration (OpenAI) ---
 #  ai:
 #    openai:
-#      api-key: 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
+#      api-key: "dummy-key-for-testing"
 #      chat:
 #        options:
 #          model: gpt-4o-mini

@@ -12,6 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
 @Document(collection = "journals")
+@org.springframework.data.mongodb.core.index.CompoundIndexes({
+    @org.springframework.data.mongodb.core.index.CompoundIndex(name = "user_video_idx", def = "{'userId': 1, 'videoUrl': 1}", unique = true)
+})
 @Data
 @Builder
 @NoArgsConstructor  // <--- Mandatory for Jackson Deserialization

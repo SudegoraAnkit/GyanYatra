@@ -31,4 +31,9 @@ public class UserController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @GetMapping("/leaderboard")
+    public ResponseEntity<java.util.List<User>> getLeaderboard() {
+        return ResponseEntity.ok(userRepository.findTop10ByOrderByTotalKarmaPointsDesc());
+    }
 }

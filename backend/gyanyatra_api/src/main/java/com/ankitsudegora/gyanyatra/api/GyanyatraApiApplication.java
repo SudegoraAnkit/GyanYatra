@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @ComponentScan(basePackages = "com.ankitsudegora.gyanyatra")
 @EnableMongoRepositories(basePackages = "com.ankitsudegora.gyanyatra.core.repository")
 @EnableMongoAuditing
+@org.springframework.cache.annotation.EnableCaching
 public class GyanyatraApiApplication {
 
 	public static void main(String[] args) {

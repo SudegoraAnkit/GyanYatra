@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
-    
+    java.util.List<User> findTop10ByOrderByTotalKarmaPointsDesc();
 }

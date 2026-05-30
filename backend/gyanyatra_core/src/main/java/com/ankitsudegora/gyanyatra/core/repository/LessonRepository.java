@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface LessonRepository extends MongoRepository<Lesson, String> {
+    java.util.Optional<Lesson> findByUrl(String url);
 }

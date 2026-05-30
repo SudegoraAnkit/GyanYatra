@@ -16,7 +16,7 @@ public class User{
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UserPreference userPreferences;
+
+    @org.springframework.data.mongodb.core.index.Indexed(direction = org.springframework.data.mongodb.core.index.IndexDirection.DESCENDING)
     private Integer totalKarmaPoints;
-    
-    
 }

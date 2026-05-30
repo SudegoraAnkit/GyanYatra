@@ -12,7 +12,10 @@ public class Lesson {
     @Id
     private String id;
     private String title;
+
+    @org.springframework.data.mongodb.core.index.Indexed(unique = true)
     private String url;
+    
     private List<String> conceptsCovered;
     private List<String> interviewQuestions;
 }
