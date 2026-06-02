@@ -1,6 +1,7 @@
 # Multi-stage Dockerfile to build and run GyanYatra API with Java 25
-FROM maven:3.9.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
+
 
 # Copy pom.xml files first for caching dependencies
 COPY pom.xml .
