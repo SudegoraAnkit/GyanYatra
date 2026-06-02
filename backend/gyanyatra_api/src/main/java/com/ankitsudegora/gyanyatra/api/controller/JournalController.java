@@ -1,6 +1,6 @@
 package com.ankitsudegora.gyanyatra.api.controller;
 
-import com.ankitsudegora.gyanyatra.ai.config.AcharyaMessagingConfig;
+import com.ankitsudegora.gyanyatra.ai.messaging.AcharyaLogConsumer;
 import com.ankitsudegora.gyanyatra.api.dto.JournalRequest;
 import com.ankitsudegora.gyanyatra.core.exception.GyanYatraException;
 import com.ankitsudegora.gyanyatra.core.model.Journal;
@@ -13,8 +13,6 @@ import com.ankitsudegora.gyanyatra.ai.service.VideoMetadataService;
 import com.ankitsudegora.gyanyatra.ai.dto.VideoMetadataDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.AmqpException;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -38,7 +36,7 @@ import java.util.Optional;
 public class JournalController {
 
     private final JournalService journalService;
-    private final RabbitTemplate rabbitTemplate;
+    private final AcharyaLogConsumer acharyaLogConsumer;
 
     @Autowired
     private AcharyaService acharyaService;
@@ -90,12 +88,12 @@ public class JournalController {
 
                 return ResponseEntity.ok("Simulation complete. Wisdom Log evaluated locally.");
             } else {
-                // Push the existing journal to RabbitMQ for scoring
-                rabbitTemplate.convertAndSend("", AcharyaMessagingConfig.WISDOM_LOG_QUEUE, journal);
+                // Execute the meditation process asynchronously
+                acharyaLogConsumer.processWisdomLog(journal);
                 return ResponseEntity.accepted()
                         .body("Acharya is now meditating on your insights. Your Mastery Map will update shortly.");
             }
-        } catch (AmqpException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

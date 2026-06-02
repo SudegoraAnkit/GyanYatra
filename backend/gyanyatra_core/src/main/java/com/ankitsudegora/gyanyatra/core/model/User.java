@@ -21,4 +21,7 @@ public class User{
     private Integer totalKarmaPoints;
     private String bio;
     private java.util.List<String> additionalSkills;
+
+    @org.springframework.data.annotation.Transient
+    private String token;
 }

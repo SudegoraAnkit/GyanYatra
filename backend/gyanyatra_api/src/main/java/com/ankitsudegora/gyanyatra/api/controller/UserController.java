@@ -3,6 +3,7 @@ package com.ankitsudegora.gyanyatra.api.controller;
 import com.ankitsudegora.gyanyatra.core.model.User;
 import com.ankitsudegora.gyanyatra.core.repository.UserRepository;
 import com.ankitsudegora.gyanyatra.core.service.OtpService;
+import com.ankitsudegora.gyanyatra.core.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final OtpService otpService;
+    private final JwtService jwtService;
 
     @PostMapping
     public ResponseEntity<User> registerSeeker(@RequestBody User user) {
@@ -79,9 +81,7 @@ public class UserController {
         String otp = otpService.generateOtp(email);
         
         Map<String, String> response = new HashMap<>();
-        response.put("message", "OTP successfully sent (simulated).");
-        // Return OTP in response payload for easy frontend display and developer convenience
-        response.put("otp", otp);
+        response.put("message", "OTP security code successfully dispatched.");
         return ResponseEntity.ok(response);
     }
 
@@ -107,6 +107,8 @@ public class UserController {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             log.info("User found. Logging in: {}", email);
+            String token = jwtService.generateToken(user.getId(), user.getEmail());
+            user.setToken(token);
             return ResponseEntity.ok(user);
         } else {
             log.info("User not found. Registering new user: {}", email);
@@ -119,6 +121,8 @@ public class UserController {
             newUser.setBio("Passionate Seeker on the GyanYatra.");
             
             User saved = userRepository.save(newUser);
+            String token = jwtService.generateToken(saved.getId(), saved.getEmail());
+            saved.setToken(token);
             return ResponseEntity.ok(saved);
         }
     }

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import './index.css'
 
-const API_BASE = 'http://localhost:8080/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
 
 // ==========================================================================
 // DYNAMIC STREAK CALCULATIONS
@@ -400,7 +400,7 @@ function App() {
     return saved ? JSON.parse(saved) : {}
   })
   
-  // Daily Streak State (compatibility/fallback)
+  // Daily Streak State
   const [streak, setStreak] = useState(0)
   const [showStreakDetails, setShowStreakDetails] = useState(false)
   
@@ -425,7 +425,7 @@ function App() {
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser)
-        fetchUserProfile(parsed.id)
+        fetchUserProfile(parsed.id, parsed.token)
       } catch (e) {
         localStorage.removeItem('gyanyatra_user')
       }
@@ -447,21 +447,30 @@ function App() {
     }
   }, [isMeditating, activeJournalId, user])
 
-  // Fetch User Profile from Backend
-  const fetchUserProfile = async (userId) => {
+  // Fetch User Profile from Backend (Includes authorization headers)
+  const fetchUserProfile = async (userId, customToken = null) => {
+    const savedUser = JSON.parse(localStorage.getItem('gyanyatra_user') || '{}')
+    const token = customToken || savedUser?.token
+
     try {
-      const res = await fetch(`${API_BASE}/yatra/users/${userId}`)
+      const res = await fetch(`${API_BASE}/yatra/users/${userId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      })
       if (res.ok) {
         const data = await res.json()
-        setUser(data)
+        // Maintain token in state/storage
+        const updatedUser = { ...data, token: token }
+        setUser(updatedUser)
         
         // Load portfolio edit states
         setEditName(data.name || '')
         setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
         setEditSkills(data.additionalSkills || [])
         
-        localStorage.setItem('gyanyatra_user', JSON.stringify(data))
-        fetchSeekerJournals(userId)
+        localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
+        fetchSeekerJournals(userId, token)
         updateStreakCount(data.id)
       } else {
         localStorage.removeItem('gyanyatra_user')
@@ -473,10 +482,17 @@ function App() {
   }
 
   // Fetch Journals for the Seeker
-  const fetchSeekerJournals = async (userId) => {
+  const fetchSeekerJournals = async (userId, customToken = null) => {
+    const savedUser = JSON.parse(localStorage.getItem('gyanyatra_user') || '{}')
+    const token = customToken || savedUser?.token
     setLoadingJournals(true)
+
     try {
-      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`)
+      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      })
       if (res.ok) {
         const data = await res.json()
         setJournals(data || [])
@@ -488,7 +504,7 @@ function App() {
     }
   }
 
-  // Fetch Leaderboard
+  // Fetch Leaderboard (Public Endpoint, no token needed)
   const fetchLeaderboard = async () => {
     setLoadingLeaderboard(true)
     try {
@@ -508,11 +524,15 @@ function App() {
     fetchLeaderboard()
   }, [])
 
-  // Poll Journal Status (Async MQ Path)
+  // Poll Journal Status (Requires authorization)
   const pollJournalStatus = async (journalId) => {
     if (!user) return
     try {
-      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${user.id}`)
+      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (res.ok) {
         const data = await res.json()
         setJournals(data || [])
@@ -526,8 +546,8 @@ function App() {
           
           setExpandedJournalId(journalId)
           
-          // Refresh user data (Karma points)
-          fetchUserProfile(user.id)
+          // Refresh user data
+          fetchUserProfile(user.id, user.token)
           fetchLeaderboard()
           
           // Update streaks
@@ -542,7 +562,7 @@ function App() {
     }
   }
 
-  // Initiate OTP Login/Registration Request
+  // Initiate OTP Login/Registration Request (Public Endpoint)
   const handleRequestOtp = async (e) => {
     e.preventDefault()
     if (!regEmail.trim()) return
@@ -555,14 +575,8 @@ function App() {
       })
       
       if (res.ok) {
-        const data = await res.json()
         setOtpSent(true)
-        if (data.otp) {
-          setReceivedOtp(data.otp)
-          setSuccessMsg(`GYANYATRA SECURITY CODE (Testing Mode): ${data.otp}`)
-        } else {
-          setSuccessMsg("OTP security code successfully dispatched. Check Java console logs.")
-        }
+        setSuccessMsg("OTP security code successfully dispatched. Please check your email inbox (and developer console logs if running locally).")
       } else {
         setErrorMsg("Failed to request OTP. Ensure your email is correct.")
       }
@@ -571,7 +585,7 @@ function App() {
     }
   }
 
-  // Verify OTP and Complete Login
+  // Verify OTP and Complete Login (Public Endpoint, issues JWT)
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
     if (!otpCode.trim()) return
@@ -583,14 +597,14 @@ function App() {
       })
       
       if (res.ok) {
-        const data = await res.json()
+        const data = await res.json() // Contains User object + JWT in token field
         setUser(data)
         setEditName(data.name || '')
         setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
         setEditSkills(data.additionalSkills || [])
         
         localStorage.setItem('gyanyatra_user', JSON.stringify(data))
-        fetchSeekerJournals(data.id)
+        fetchSeekerJournals(data.id, data.token)
         fetchLeaderboard()
         initializeStreak(data.id)
         
@@ -609,7 +623,7 @@ function App() {
     }
   }
 
-  // Save customized user portfolio
+  // Save customized user portfolio (Requires JWT)
   const handleSavePortfolio = async (e) => {
     e.preventDefault()
     if (!editName.trim()) return
@@ -619,7 +633,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           name: editName,
           bio: editBio,
@@ -629,8 +646,9 @@ function App() {
       
       if (res.ok) {
         const data = await res.json()
-        setUser(data)
-        localStorage.setItem('gyanyatra_user', JSON.stringify(data))
+        const updatedUser = { ...data, token: user.token }
+        setUser(updatedUser)
+        localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
         setIsEditingPortfolio(false)
         setSuccessMsg("Portfolio profile saved successfully!")
         setTimeout(() => setSuccessMsg(''), 5000)
@@ -664,7 +682,7 @@ function App() {
     return (match && match[2].length === 11) ? match[2] : null
   }
 
-  // Load YouTube Video Metadata
+  // Load YouTube Video Metadata (Requires JWT)
   const handleLoadMetadata = async (url) => {
     if (!url.trim()) return
     setVideoMetadata(null)
@@ -680,7 +698,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/videos/metadata`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           videoUrl: url,
           includeStatistics: true,
@@ -718,7 +739,7 @@ function App() {
     }
   }
 
-  // Submit log to Acharya for Meditation
+  // Submit log to Acharya for Meditation (Requires JWT)
   const handleSubmitLog = async (e) => {
     e.preventDefault()
     if (!user || !videoUrl.trim() || !userNotes.trim()) return
@@ -728,7 +749,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/journals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           userId: user.id,
           videoUrl: videoUrl,
@@ -739,9 +763,12 @@ function App() {
       if (res.ok) {
         const journal = await res.json()
         
-        // Step 2: Queue for meditation (simulate true or false)
+        // Step 2: Queue for meditation
         const meditateRes = await fetch(`${API_BASE}/yatra/journals/${journal.id}/meditate?simulate=${simulate}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
         })
         
         if (simulate) {
@@ -750,8 +777,8 @@ function App() {
             recordStudyActivity(user.id)
             
             // Re-fetch journals & profile immediately
-            await fetchSeekerJournals(user.id)
-            await fetchUserProfile(user.id)
+            await fetchSeekerJournals(user.id, user.token)
+            await fetchUserProfile(user.id, user.token)
             await fetchLeaderboard()
             
             setVideoUrl('')
@@ -878,7 +905,7 @@ function App() {
     }
   }
 
-  // Handle active recall quiz loading and submitting
+  // Handle active recall quiz loading (Requires JWT)
   const fetchLessonQuestions = async (url) => {
     if (lessonQuestionsMap[url] || loadingQuestionsMap[url]) return
     
@@ -886,7 +913,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/acharya/discover-topic`, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: url
       })
       if (res.ok) {
@@ -923,6 +953,7 @@ function App() {
     })
   }
 
+  // Submit active recall quiz answers (Requires JWT)
   const handleSubmitQuiz = async (journalId) => {
     const answers = quizAnswers[journalId] || ['', '', '']
     if (answers.some(ans => !ans.trim())) {
@@ -934,7 +965,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/journals/${journalId}/quiz/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify(answers)
       })
       
@@ -943,7 +977,7 @@ function App() {
         setCompletedQuizzes(updatedQuizzes)
         localStorage.setItem('gyanyatra_completed_quizzes', JSON.stringify(updatedQuizzes))
         
-        await fetchUserProfile(user.id)
+        await fetchUserProfile(user.id, user.token)
         await fetchLeaderboard()
         
         setSuccessMsg("Self-study recall quiz graded! +15 Karma points added to your profile.")
@@ -969,6 +1003,7 @@ function App() {
     setRecallAnswers(prev => ({ ...prev, [journalId]: val }))
   }
 
+  // Submit recall answers (Requires JWT)
   const handleSubmitRecall = async (journalId) => {
     const answer = recallAnswers[journalId] || ''
     if (!answer.trim()) {
@@ -977,10 +1012,12 @@ function App() {
     }
 
     try {
-      // Rewards +10 Karma points using quiz/submit as dynamic reward endpoint
       const res = await fetch(`${API_BASE}/yatra/journals/${journalId}/quiz/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify([answer])
       })
 
@@ -995,7 +1032,7 @@ function App() {
         setSimulatedRecallDue(updatedDue)
         localStorage.setItem('gyanyatra_recall_due', JSON.stringify(updatedDue))
 
-        await fetchUserProfile(user.id)
+        await fetchUserProfile(user.id, user.token)
         await fetchLeaderboard()
         
         setSuccessMsg("Consolidation validated! +10 Karma points added.")
@@ -1064,7 +1101,7 @@ function App() {
     }
   }
 
-  // Load user details/journals to view another user's dashboard
+  // Load user details/journals to view another user's dashboard (Requires JWT)
   const handleViewUserDashboard = async (userId) => {
     setLoadingSelectedUser(true)
     setIsModalOpen(true)
@@ -1072,13 +1109,21 @@ function App() {
     setSelectedUserJournals([])
     
     try {
-      const profileRes = await fetch(`${API_BASE}/yatra/users/${userId}`)
+      const profileRes = await fetch(`${API_BASE}/yatra/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (profileRes.ok) {
         const profileData = await profileRes.json()
         setSelectedUser(profileData)
       }
       
-      const journalsRes = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`)
+      const journalsRes = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (journalsRes.ok) {
         const journalsData = await journalsRes.json()
         setSelectedUserJournals(journalsData || [])
@@ -1559,7 +1604,7 @@ function App() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                  <button type="button" onClick={() => { setIsEditingPortfolio(false); fetchUserProfile(user.id); }} className="btn btn-secondary" style={{ flex: 1 }}>
+                  <button type="button" onClick={() => { setIsEditingPortfolio(false); fetchUserProfile(user.id, user.token); }} className="btn btn-secondary" style={{ flex: 1 }}>
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
@@ -1631,13 +1676,15 @@ function App() {
                     Learning Paradigms Coverages:
                   </div>
                   <div className="stats-grid">
-                    <div className="stat-box">
-                      <span className="stat-box-title">Total Topics</span>
-                      <span className="stat-box-num">{categoryStats.total}</span>
-                    </div>
-                    <div className="stat-box">
-                      <span className="stat-box-title">Platform Skills</span>
-                      <span className="stat-box-num">{getGraspedConcepts().length}</span>
+                    <div className="stats-grid">
+                      <div className="stat-box">
+                        <span className="stat-box-title">Total Topics</span>
+                        <span className="stat-box-num">{categoryStats.total}</span>
+                      </div>
+                      <div className="stat-box">
+                        <span className="stat-box-title">Platform Skills</span>
+                        <span className="stat-box-num">{getGraspedConcepts().length}</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -2032,7 +2079,7 @@ function App() {
                           .filter(j => j.isVerified && j.aiAnalysis && j.aiAnalysis.identifiedConcepts)
                           .flatMap(j => j.aiAnalysis.identifiedConcepts)
                       )).length === 0 ? (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No concepts unlocked yet.</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No concepts unlocked yet.</span>
                       ) : (
                         Array.from(new Set(
                           selectedUserJournals

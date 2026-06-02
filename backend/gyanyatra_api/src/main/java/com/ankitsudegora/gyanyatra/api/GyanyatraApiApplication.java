@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoRepositories(basePackages = "com.ankitsudegora.gyanyatra.core.repository")
 @EnableMongoAuditing
 @org.springframework.cache.annotation.EnableCaching
+@org.springframework.scheduling.annotation.EnableAsync
 public class GyanyatraApiApplication {
 
 	public static void main(String[] args) {

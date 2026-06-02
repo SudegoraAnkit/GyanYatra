@@ -1,6 +1,10 @@
 package com.ankitsudegora.gyanyatra.core.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -12,6 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class OtpService {
     private final Map<String, OtpDetails> otpCache = new ConcurrentHashMap<>();
     private final Random random = new Random();
+
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:}")
+    private String fromEmail;
 
     private static class OtpDetails {
         String otp;
@@ -32,7 +42,29 @@ public class OtpService {
         System.out.println("Email: " + email);
         System.out.println("OTP: " + otp);
         System.out.println("========================================");
+        
+        // Dispatch actual email
+        sendOtpEmail(email, otp);
+        
         return otp;
+    }
+
+    private void sendOtpEmail(String email, String otp) {
+        if (mailSender == null || fromEmail == null || fromEmail.trim().isEmpty()) {
+            log.warn("SMTP email sender is not fully configured (spring.mail.username is empty). Skipping email dispatch.");
+            return;
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(email);
+            message.setSubject("GyanYatra Seeker Security Verification");
+            message.setText("Welcome to GyanYatra!\n\nYour security verification OTP code is: " + otp + "\n\nThis code will expire in 5 minutes.\n\nPath of Knowledge.");
+            mailSender.send(message);
+            log.info("OTP email successfully sent to: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to send OTP email to {}: {}", email, e.getMessage(), e);
+        }
     }
 
     public boolean validateOtp(String email, String otp) {
