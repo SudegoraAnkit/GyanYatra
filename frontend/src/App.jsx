@@ -1,18 +1,356 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { 
   BookOpen, Award, CheckCircle, HelpCircle, LogOut, Video, 
   Send, Loader, ArrowRight, Play, ExternalLink, Flame, 
-  Music, Volume2, Sparkles, X, RefreshCw, Check, Clock, User 
+  Music, Volume2, Sparkles, X, RefreshCw, Check, Clock, User,
+  Edit2, Lock
 } from 'lucide-react'
 import './index.css'
 
-const API_BASE = 'http://localhost:8080/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
 
+// ==========================================================================
+// DYNAMIC STREAK CALCULATIONS
+// ==========================================================================
+const calculateStreaks = (userJournals) => {
+  if (!userJournals || userJournals.length === 0) {
+    return { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+  }
+
+  // Extract unique dates formatted as YYYY-MM-DD
+  const dates = Array.from(new Set(
+    userJournals.map(j => new Date(j.createdAt).toISOString().split('T')[0])
+  )).sort((a, b) => new Date(b) - new Date(a)); // descending (newest first)
+
+  if (dates.length === 0) {
+    return { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  // 1. Daily Streak
+  let daily = 0;
+  let hasToday = dates.includes(todayStr);
+  let hasYesterday = dates.includes(yesterdayStr);
+
+  if (hasToday || hasYesterday) {
+    let current = hasToday ? todayStr : yesterdayStr;
+    daily = 1;
+    let nextIndex = dates.indexOf(current) + 1;
+    let checkDate = new Date(current);
+
+    while (nextIndex < dates.length) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = checkDate.toISOString().split('T')[0];
+      if (dates.includes(checkStr)) {
+        daily++;
+        nextIndex = dates.indexOf(checkStr) + 1;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Helper for ISO week identifier: YYYY-Www
+  const getWeekId = (dateObj) => {
+    const d = new Date(dateObj);
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7)); // Thursday of the week
+    const yearStart = new Date(d.getFullYear(),0,1);
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+    return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  };
+
+  // 2. Weekly Streak
+  const weeks = Array.from(new Set(
+    userJournals.map(j => getWeekId(new Date(j.createdAt)))
+  )).sort((a, b) => b.localeCompare(a));
+
+  let weekly = 0;
+  const currentWeek = getWeekId(new Date());
+  const lastWeekDate = new Date();
+  lastWeekDate.setDate(lastWeekDate.getDate() - 7);
+  const lastWeek = getWeekId(lastWeekDate);
+
+  if (weeks.includes(currentWeek) || weeks.includes(lastWeek)) {
+    let currentW = weeks.includes(currentWeek) ? currentWeek : lastWeek;
+    weekly = 1;
+    let [year, weekNum] = currentW.split('-W').map(Number);
+    let checkWNum = weekNum;
+    let checkYear = year;
+
+    while (true) {
+      checkWNum--;
+      if (checkWNum === 0) {
+        checkYear--;
+        const dec31 = new Date(checkYear, 11, 31);
+        const prevWeekId = getWeekId(dec31);
+        checkWNum = Number(prevWeekId.split('-W')[1]);
+      }
+      const checkWId = `${checkYear}-W${String(checkWNum).padStart(2, '0')}`;
+      if (weeks.includes(checkWId)) {
+        weekly++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // 3. Monthly Streak
+  const months = Array.from(new Set(
+    userJournals.map(j => {
+      const d = new Date(j.createdAt);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    })
+  )).sort((a, b) => b.localeCompare(a));
+
+  let monthly = 0;
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+  if (months.includes(currentMonth) || months.includes(lastMonth)) {
+    let currentM = months.includes(currentMonth) ? currentMonth : lastMonth;
+    monthly = 1;
+    let [year, monthNum] = currentM.split('-').map(Number);
+    let checkMNum = monthNum;
+    let checkYear = year;
+
+    while (true) {
+      checkMNum--;
+      if (checkMNum === 0) {
+        checkMNum = 12;
+        checkYear--;
+      }
+      const checkMId = `${checkYear}-${String(checkMNum).padStart(2, '0')}`;
+      if (months.includes(checkMId)) {
+        monthly++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // 4. Yearly Streak
+  const years = Array.from(new Set(
+    userJournals.map(j => new Date(j.createdAt).getFullYear().toString())
+  )).sort((a, b) => Number(b) - Number(a));
+
+  let yearly = 0;
+  const currentYear = new Date().getFullYear().toString();
+  const lastYear = (new Date().getFullYear() - 1).toString();
+
+  if (years.includes(currentYear) || years.includes(lastYear)) {
+    let currentY = years.includes(currentYear) ? currentYear : lastYear;
+    yearly = 1;
+    let checkYear = Number(currentY);
+
+    while (true) {
+      checkYear--;
+      const checkYStr = checkYear.toString();
+      if (years.includes(checkYStr)) {
+        yearly++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { daily, weekly, monthly, yearly };
+};
+
+// ==========================================================================
+// TOPIC & CATEGORY STATISTICS HELPER
+// ==========================================================================
+const getCategoryStats = (journals) => {
+  let totalTopics = 0;
+  let techCount = 0;
+  let growthCount = 0;
+  const techTopics = new Set();
+  const growthTopics = new Set();
+
+  journals.forEach(j => {
+    if (j.isVerified) {
+      totalTopics++;
+      const concepts = j.aiAnalysis?.identifiedConcepts || [];
+      const notes = (j.userNotes || "").toLowerCase();
+
+      const isGrowth = concepts.some(c => 
+        ["Personal Productivity", "Habit Architecture", "The 2-Minute Rule", "Time Management", "Habit Stacking", "Cognitive Focus"].includes(c)
+      ) || notes.includes("habit") || notes.includes("productivity") || notes.includes("focus") || notes.includes("mindset");
+
+      const topicName = j.aiAnalysis?.identifiedConcepts?.[0] || "System Design";
+
+      if (isGrowth) {
+        growthCount++;
+        growthTopics.add(topicName);
+      } else {
+        techCount++;
+        techTopics.add(topicName);
+      }
+    }
+  });
+
+  return {
+    total: totalTopics,
+    tech: {
+      count: techCount,
+      uniqueTopics: Array.from(techTopics)
+    },
+    growth: {
+      count: growthCount,
+      uniqueTopics: Array.from(growthTopics)
+    }
+  };
+};
+
+// ==========================================================================
+// GITHUB-STYLE CONTRIBUTION HEATMAP COMPONENT
+// ==========================================================================
+function ContributionHeatmap({ journals }) {
+  const activityMap = {};
+  journals.forEach(j => {
+    if (j.createdAt) {
+      const dStr = new Date(j.createdAt).toISOString().split('T')[0];
+      activityMap[dStr] = (activityMap[dStr] || 0) + 1;
+    }
+  });
+
+  const today = new Date();
+  const cells = [];
+  
+  // Start 364 days ago
+  const startDate = new Date();
+  startDate.setDate(today.getDate() - 364);
+  // Align to Sunday
+  const startDay = startDate.getDay();
+  startDate.setDate(startDate.getDate() - startDay);
+
+  const checkDate = new Date(startDate);
+  checkDate.setHours(0,0,0,0);
+  const endCompareDate = new Date(today);
+  endCompareDate.setHours(23,59,59,999);
+
+  while (checkDate <= endCompareDate) {
+    const dStr = checkDate.toISOString().split('T')[0];
+    const count = activityMap[dStr] || 0;
+    cells.push({
+      dateStr: dStr,
+      count: count,
+      dayOfWeek: checkDate.getDay(),
+      month: checkDate.getMonth()
+    });
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+
+  // Group cells by week (columns of 7 days)
+  const columns = [];
+  let currentWeek = [];
+  cells.forEach(cell => {
+    currentWeek.push(cell);
+    if (currentWeek.length === 7) {
+      columns.push(currentWeek);
+      currentWeek = [];
+    }
+  });
+  if (currentWeek.length > 0) {
+    columns.push(currentWeek);
+  }
+
+  // Generate month labels
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthLabels = [];
+  let lastMonth = -1;
+  columns.forEach((week, wIdx) => {
+    const firstDay = week[0];
+    if (firstDay && firstDay.month !== lastMonth) {
+      monthLabels.push({ text: monthNames[firstDay.month], index: wIdx });
+      lastMonth = firstDay.month;
+    }
+  });
+
+  return (
+    <div className="heatmap-container" onClick={(e) => e.stopPropagation()}>
+      <div className="heatmap-months">
+        {monthLabels.map((lbl, idx) => (
+          <span 
+            key={idx} 
+            className="heatmap-month-label" 
+            style={{ gridColumnStart: lbl.index + 2 }}
+          >
+            {lbl.text}
+          </span>
+        ))}
+      </div>
+      <div className="heatmap-body">
+        <div className="heatmap-days">
+          <span className="heatmap-day-label">Mon</span>
+          <span className="heatmap-day-label">Wed</span>
+          <span className="heatmap-day-label">Fri</span>
+        </div>
+        <div className="heatmap-grid-scroll">
+          <div className="heatmap-grid" style={{ gridTemplateColumns: `repeat(${columns.length}, 10px)` }}>
+            {columns.map((week, wIdx) => (
+              <div key={wIdx} className="heatmap-week-column">
+                {week.map((day, dIdx) => {
+                  let intensity = 0;
+                  if (day.count > 0) {
+                    if (day.count === 1) intensity = 1;
+                    else if (day.count === 2) intensity = 2;
+                    else if (day.count === 3) intensity = 3;
+                    else intensity = 4;
+                  }
+                  return (
+                    <div 
+                      key={dIdx} 
+                      className={`heatmap-cell intensity-${intensity}`} 
+                      title={`${day.count} satsangs logged on ${day.dateStr}`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="heatmap-legend">
+        <span>Less</span>
+        <div className="heatmap-cell intensity-0"></div>
+        <div className="heatmap-cell intensity-1"></div>
+        <div className="heatmap-cell intensity-2"></div>
+        <div className="heatmap-cell intensity-3"></div>
+        <div className="heatmap-cell intensity-4"></div>
+        <span>More</span>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
+// MAIN REACT COMPONENT
+// ==========================================================================
 function App() {
   // Seeker states
   const [user, setUser] = useState(null)
   const [regName, setRegName] = useState('')
   const [regEmail, setRegEmail] = useState('')
+  
+  // OTP Auth States
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [receivedOtp, setReceivedOtp] = useState('') // For simulated notification display
+  
+  // Portfolio Customize states
+  const [isEditingPortfolio, setIsEditingPortfolio] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editBio, setEditBio] = useState('')
+  const [editSkills, setEditSkills] = useState([])
+  const [newSkillInput, setNewSkillInput] = useState('')
+  
+  // Purpose reveal state
+  const [showPurposeModal, setShowPurposeModal] = useState(false)
   
   // Log form states
   const [videoUrl, setVideoUrl] = useState('')
@@ -62,8 +400,9 @@ function App() {
     return saved ? JSON.parse(saved) : {}
   })
   
-  // Daily Streak state
+  // Daily Streak State
   const [streak, setStreak] = useState(0)
+  const [showStreakDetails, setShowStreakDetails] = useState(false)
   
   // Audio state (Web Audio API Synthesizer)
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
@@ -76,13 +415,17 @@ function App() {
 
   const pollingRef = useRef(null)
 
+  // Compute live streaks & category stats
+  const streaks = useMemo(() => calculateStreaks(journals), [journals])
+  const categoryStats = useMemo(() => getCategoryStats(journals), [journals])
+
   // Load user from LocalStorage on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('gyanyatra_user')
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser)
-        fetchUserProfile(parsed.id)
+        fetchUserProfile(parsed.id, parsed.token)
       } catch (e) {
         localStorage.removeItem('gyanyatra_user')
       }
@@ -104,15 +447,30 @@ function App() {
     }
   }, [isMeditating, activeJournalId, user])
 
-  // Fetch User Profile from Backend
-  const fetchUserProfile = async (userId) => {
+  // Fetch User Profile from Backend (Includes authorization headers)
+  const fetchUserProfile = async (userId, customToken = null) => {
+    const savedUser = JSON.parse(localStorage.getItem('gyanyatra_user') || '{}')
+    const token = customToken || savedUser?.token
+
     try {
-      const res = await fetch(`${API_BASE}/yatra/users/${userId}`)
+      const res = await fetch(`${API_BASE}/yatra/users/${userId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      })
       if (res.ok) {
         const data = await res.json()
-        setUser(data)
-        localStorage.setItem('gyanyatra_user', JSON.stringify(data))
-        fetchSeekerJournals(userId)
+        // Maintain token in state/storage
+        const updatedUser = { ...data, token: token }
+        setUser(updatedUser)
+        
+        // Load portfolio edit states
+        setEditName(data.name || '')
+        setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
+        setEditSkills(data.additionalSkills || [])
+        
+        localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
+        fetchSeekerJournals(userId, token)
         updateStreakCount(data.id)
       } else {
         localStorage.removeItem('gyanyatra_user')
@@ -124,10 +482,17 @@ function App() {
   }
 
   // Fetch Journals for the Seeker
-  const fetchSeekerJournals = async (userId) => {
+  const fetchSeekerJournals = async (userId, customToken = null) => {
+    const savedUser = JSON.parse(localStorage.getItem('gyanyatra_user') || '{}')
+    const token = customToken || savedUser?.token
     setLoadingJournals(true)
+
     try {
-      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`)
+      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      })
       if (res.ok) {
         const data = await res.json()
         setJournals(data || [])
@@ -139,7 +504,7 @@ function App() {
     }
   }
 
-  // Fetch Leaderboard
+  // Fetch Leaderboard (Public Endpoint, no token needed)
   const fetchLeaderboard = async () => {
     setLoadingLeaderboard(true)
     try {
@@ -159,11 +524,15 @@ function App() {
     fetchLeaderboard()
   }, [])
 
-  // Poll Journal Status (Async MQ Path)
+  // Poll Journal Status (Requires authorization)
   const pollJournalStatus = async (journalId) => {
     if (!user) return
     try {
-      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${user.id}`)
+      const res = await fetch(`${API_BASE}/yatra/journals/seeker/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (res.ok) {
         const data = await res.json()
         setJournals(data || [])
@@ -177,8 +546,8 @@ function App() {
           
           setExpandedJournalId(journalId)
           
-          // Refresh user data (Karma points)
-          fetchUserProfile(user.id)
+          // Refresh user data
+          fetchUserProfile(user.id, user.token)
           fetchLeaderboard()
           
           // Update streaks
@@ -193,32 +562,117 @@ function App() {
     }
   }
 
-  // Register a new Seeker
-  const handleRegister = async (e) => {
+  // Initiate OTP Login/Registration Request (Public Endpoint)
+  const handleRequestOtp = async (e) => {
     e.preventDefault()
-    if (!regName.trim() || !regEmail.trim()) return
+    if (!regEmail.trim()) return
+    setErrorMsg('')
+    setSuccessMsg('')
+    
+    try {
+      const res = await fetch(`${API_BASE}/yatra/users/login/otp/generate?email=${encodeURIComponent(regEmail)}`, {
+        method: 'POST'
+      })
+      
+      if (res.ok) {
+        setOtpSent(true)
+        setSuccessMsg("OTP security code successfully dispatched. Please check your email inbox (and developer console logs if running locally).")
+      } else {
+        setErrorMsg("Failed to request OTP. Ensure your email is correct.")
+      }
+    } catch (err) {
+      setErrorMsg("Connection to GyanYatra server failed. Make sure backend is running.")
+    }
+  }
+
+  // Verify OTP and Complete Login (Public Endpoint, issues JWT)
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    if (!otpCode.trim()) return
     setErrorMsg('')
     
     try {
-      const res = await fetch(`${API_BASE}/yatra/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: regName, email: regEmail })
+      const res = await fetch(`${API_BASE}/yatra/users/login/otp/verify?email=${encodeURIComponent(regEmail)}&otp=${encodeURIComponent(otpCode)}&name=${encodeURIComponent(regName)}`, {
+        method: 'POST'
+      })
+      
+      if (res.ok) {
+        const data = await res.json() // Contains User object + JWT in token field
+        setUser(data)
+        setEditName(data.name || '')
+        setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
+        setEditSkills(data.additionalSkills || [])
+        
+        localStorage.setItem('gyanyatra_user', JSON.stringify(data))
+        fetchSeekerJournals(data.id, data.token)
+        fetchLeaderboard()
+        initializeStreak(data.id)
+        
+        // Clean temporary states
+        setOtpSent(false)
+        setOtpCode('')
+        setReceivedOtp('')
+        setSuccessMsg("Validated successfully! Welcome to GyanYatra.")
+        setTimeout(() => setSuccessMsg(''), 5000)
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        setErrorMsg(errData.error || "Verification failed. The security code is incorrect or expired.")
+      }
+    } catch (err) {
+      setErrorMsg("Connection failed during verification.")
+    }
+  }
+
+  // Save customized user portfolio (Requires JWT)
+  const handleSavePortfolio = async (e) => {
+    e.preventDefault()
+    if (!editName.trim()) return
+    setErrorMsg('')
+    setSuccessMsg('')
+    
+    try {
+      const res = await fetch(`${API_BASE}/yatra/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          name: editName,
+          bio: editBio,
+          additionalSkills: editSkills
+        })
       })
       
       if (res.ok) {
         const data = await res.json()
-        setUser(data)
-        localStorage.setItem('gyanyatra_user', JSON.stringify(data))
-        fetchSeekerJournals(data.id)
+        const updatedUser = { ...data, token: user.token }
+        setUser(updatedUser)
+        localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
+        setIsEditingPortfolio(false)
+        setSuccessMsg("Portfolio profile saved successfully!")
+        setTimeout(() => setSuccessMsg(''), 5000)
         fetchLeaderboard()
-        initializeStreak(data.id)
       } else {
-        setErrorMsg("Failed to register. Seeker might already exist or invalid input.")
+        setErrorMsg("Failed to save portfolio changes.")
       }
     } catch (err) {
-      setErrorMsg("Connection to GyanYatra server failed.")
+      setErrorMsg("Connection failure updating profile.")
     }
+  }
+
+  const handleAddSkill = (e) => {
+    e.preventDefault()
+    if (!newSkillInput.trim()) return
+    const skill = newSkillInput.trim()
+    if (!editSkills.includes(skill)) {
+      setEditSkills(prev => [...prev, skill])
+    }
+    setNewSkillInput('')
+  }
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setEditSkills(prev => prev.filter(s => s !== skillToRemove))
   }
 
   // Extract YouTube ID locally
@@ -228,7 +682,7 @@ function App() {
     return (match && match[2].length === 11) ? match[2] : null
   }
 
-  // Load YouTube Video Metadata
+  // Load YouTube Video Metadata (Requires JWT)
   const handleLoadMetadata = async (url) => {
     if (!url.trim()) return
     setVideoMetadata(null)
@@ -244,7 +698,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/videos/metadata`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           videoUrl: url,
           includeStatistics: true,
@@ -282,7 +739,7 @@ function App() {
     }
   }
 
-  // Submit log to Acharya for Meditation
+  // Submit log to Acharya for Meditation (Requires JWT)
   const handleSubmitLog = async (e) => {
     e.preventDefault()
     if (!user || !videoUrl.trim() || !userNotes.trim()) return
@@ -292,7 +749,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/journals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           userId: user.id,
           videoUrl: videoUrl,
@@ -303,9 +763,12 @@ function App() {
       if (res.ok) {
         const journal = await res.json()
         
-        // Step 2: Queue for meditation (simulate true or false)
+        // Step 2: Queue for meditation
         const meditateRes = await fetch(`${API_BASE}/yatra/journals/${journal.id}/meditate?simulate=${simulate}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
         })
         
         if (simulate) {
@@ -314,8 +777,8 @@ function App() {
             recordStudyActivity(user.id)
             
             // Re-fetch journals & profile immediately
-            await fetchSeekerJournals(user.id)
-            await fetchUserProfile(user.id)
+            await fetchSeekerJournals(user.id, user.token)
+            await fetchUserProfile(user.id, user.token)
             await fetchLeaderboard()
             
             setVideoUrl('')
@@ -442,7 +905,7 @@ function App() {
     }
   }
 
-  // Handle active recall quiz loading and submitting
+  // Handle active recall quiz loading (Requires JWT)
   const fetchLessonQuestions = async (url) => {
     if (lessonQuestionsMap[url] || loadingQuestionsMap[url]) return
     
@@ -450,7 +913,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/acharya/discover-topic`, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: url
       })
       if (res.ok) {
@@ -487,6 +953,7 @@ function App() {
     })
   }
 
+  // Submit active recall quiz answers (Requires JWT)
   const handleSubmitQuiz = async (journalId) => {
     const answers = quizAnswers[journalId] || ['', '', '']
     if (answers.some(ans => !ans.trim())) {
@@ -498,7 +965,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/yatra/journals/${journalId}/quiz/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify(answers)
       })
       
@@ -507,7 +977,7 @@ function App() {
         setCompletedQuizzes(updatedQuizzes)
         localStorage.setItem('gyanyatra_completed_quizzes', JSON.stringify(updatedQuizzes))
         
-        await fetchUserProfile(user.id)
+        await fetchUserProfile(user.id, user.token)
         await fetchLeaderboard()
         
         setSuccessMsg("Self-study recall quiz graded! +15 Karma points added to your profile.")
@@ -533,6 +1003,7 @@ function App() {
     setRecallAnswers(prev => ({ ...prev, [journalId]: val }))
   }
 
+  // Submit recall answers (Requires JWT)
   const handleSubmitRecall = async (journalId) => {
     const answer = recallAnswers[journalId] || ''
     if (!answer.trim()) {
@@ -541,10 +1012,12 @@ function App() {
     }
 
     try {
-      // Rewards +10 Karma points using quiz/submit as dynamic reward endpoint
       const res = await fetch(`${API_BASE}/yatra/journals/${journalId}/quiz/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify([answer])
       })
 
@@ -559,7 +1032,7 @@ function App() {
         setSimulatedRecallDue(updatedDue)
         localStorage.setItem('gyanyatra_recall_due', JSON.stringify(updatedDue))
 
-        await fetchUserProfile(user.id)
+        await fetchUserProfile(user.id, user.token)
         await fetchLeaderboard()
         
         setSuccessMsg("Consolidation validated! +10 Karma points added.")
@@ -600,7 +1073,6 @@ function App() {
       if (lastDate === yesterdayStr) {
         setStreak(currentStreak)
       } else {
-        // Streak is broken
         setStreak(0)
         localStorage.setItem(`gyanyatra_streak_${userId}`, '0')
       }
@@ -629,7 +1101,7 @@ function App() {
     }
   }
 
-  // Load user details/journals to view another user's dashboard
+  // Load user details/journals to view another user's dashboard (Requires JWT)
   const handleViewUserDashboard = async (userId) => {
     setLoadingSelectedUser(true)
     setIsModalOpen(true)
@@ -637,13 +1109,21 @@ function App() {
     setSelectedUserJournals([])
     
     try {
-      const profileRes = await fetch(`${API_BASE}/yatra/users/${userId}`)
+      const profileRes = await fetch(`${API_BASE}/yatra/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (profileRes.ok) {
         const profileData = await profileRes.json()
         setSelectedUser(profileData)
       }
       
-      const journalsRes = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`)
+      const journalsRes = await fetch(`${API_BASE}/yatra/journals/seeker/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
       if (journalsRes.ok) {
         const journalsData = await journalsRes.json()
         setSelectedUserJournals(journalsData || [])
@@ -702,7 +1182,7 @@ function App() {
     })
   }
 
-  // Registration View (Onboarding)
+  // OTP Login/Register Onboarding Screen
   if (!user) {
     return (
       <div className="app-container registration-container">
@@ -714,8 +1194,9 @@ function App() {
               <p>Path of Knowledge</p>
             </div>
           </div>
+          
           <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-            Welcome to the AI-powered learning dashboard. Register your Seeker profile to start logging your technical insights and receiving feedback from the Acharya.
+            Welcome to the AI-powered learning dashboard. Enter your email to receive a secure OTP code to access or register your Seeker profile.
           </p>
           
           {errorMsg && (
@@ -724,33 +1205,65 @@ function App() {
             </div>
           )}
           
-          <form onSubmit={handleRegister} className="mt-4">
-            <div className="form-group text-left" style={{ textAlign: 'left' }}>
-              <label className="form-label">Seeker Name</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="e.g. Ankit Rai"
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                required
-              />
+          {successMsg && (
+            <div className="card mb-4" style={{ background: 'rgba(243, 156, 18, 0.15)', borderColor: 'var(--accent-gold)', color: '#fef08a', padding: '0.75rem', fontSize: '0.85rem', fontWeight: '500' }}>
+              {successMsg}
             </div>
-            <div className="form-group text-left" style={{ textAlign: 'left' }}>
-              <label className="form-label">Email Address</label>
-              <input 
-                type="email" 
-                className="form-input" 
-                placeholder="e.g. seeker@gyanyatra.com"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" className="btn btn-primary btn-block" style={{ width: '100%', marginTop: '1rem' }}>
-              Begin Journey <ArrowRight size={16} />
-            </button>
-          </form>
+          )}
+          
+          {!otpSent ? (
+            <form onSubmit={handleRequestOtp} className="mt-4">
+              <div className="form-group text-left" style={{ textAlign: 'left' }}>
+                <label className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-input" 
+                  placeholder="e.g. seeker@gyanyatra.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary btn-block" style={{ width: '100%', marginTop: '1rem' }}>
+                Send Security OTP <ArrowRight size={16} />
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="mt-4">
+              <div className="form-group text-left" style={{ textAlign: 'left' }}>
+                <label className="form-label">Security OTP Code</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="6-digit security code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  maxLength={6}
+                  required
+                />
+              </div>
+              
+              <div className="form-group text-left" style={{ textAlign: 'left' }}>
+                <label className="form-label">Seeker Name (New users only)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. Ankit Rai (Skip if returning)"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button type="button" onClick={() => { setOtpSent(false); setErrorMsg(''); setSuccessMsg(''); }} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Back
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
+                  Verify & Enter <ArrowRight size={16} />
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     )
@@ -760,19 +1273,55 @@ function App() {
     <div className="app-container">
       {/* Header */}
       <header className="app-header">
-        <div className="logo-section">
+        <div className="logo-section" onClick={() => setShowPurposeModal(true)} style={{ cursor: 'pointer' }} title="Click to view GyanYatra purpose & why it was built">
           <BookOpen size={36} className="logo-icon" />
           <div className="logo-text">
             <h1>GyanYatra</h1>
-            <p>Path of Knowledge</p>
+            <p>Path of Knowledge <span>ℹ️</span></p>
           </div>
         </div>
         
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {/* Daily study streak */}
-          <div className="streak-badge" title="Daily study streak! Log video notes daily to stack.">
-            <Flame size={14} />
-            <span>{streak} Day Streak</span>
+          <div className="streak-badge-container" style={{ position: 'relative' }}>
+            <div 
+              className="streak-badge" 
+              onClick={() => setShowStreakDetails(!showStreakDetails)}
+              style={{ cursor: 'pointer' }}
+              title="Click to view detailed streaks (Daily, Weekly, Monthly, Yearly)"
+            >
+              <Flame size={14} />
+              <span>{streaks.daily} Day Streak</span>
+            </div>
+            
+            {showStreakDetails && (
+              <div className="streak-popover card">
+                <div className="streak-popover-header">
+                  <h3>Yatra Streaks</h3>
+                  <button onClick={() => setShowStreakDetails(false)} className="btn-close-popover">
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="streak-popover-body">
+                  <div className="streak-item">
+                    <span className="streak-label">Daily Streak:</span>
+                    <span className="streak-val">{streaks.daily} days</span>
+                  </div>
+                  <div className="streak-item">
+                    <span className="streak-label">Weekly Streak:</span>
+                    <span className="streak-val">{streaks.weekly} weeks</span>
+                  </div>
+                  <div className="streak-item">
+                    <span className="streak-label">Monthly Streak:</span>
+                    <span className="streak-val">{streaks.monthly} months</span>
+                  </div>
+                  <div className="streak-item">
+                    <span className="streak-label">Yearly Streak:</span>
+                    <span className="streak-val">{streaks.yearly} years</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="seeker-profile-badge">
@@ -963,40 +1512,214 @@ function App() {
 
         {/* Right Column: Mastery portfolio, Leaderboard, Yatra Map history */}
         <div>
-          {/* Portfolio Mastery cloud */}
+          {/* Portfolio Mastery cloud & Profile Customizer */}
           <div className="card">
-            <h2 className="card-title">
-              <Sparkles size={20} style={{ color: 'var(--color-primary)' }} /> Seeker's Mastery Portfolio
-            </h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                Your Grasped Concepts:
-              </div>
-              {getGraspedConcepts().length === 0 ? (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No concepts unlocked yet. Submit reflections to discover.</div>
-              ) : (
-                <div className="concept-cloud-container">
-                  {getGraspedConcepts().map((concept, i) => (
-                    <span 
-                      key={i} 
-                      className={`concept-cloud-tag ${selectedConceptFilter === concept ? 'active' : ''}`}
-                      onClick={() => setSelectedConceptFilter(prev => prev === concept ? null : concept)}
-                    >
-                      {concept}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {selectedConceptFilter && (
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h2 className="card-title" style={{ border: 'none', padding: '0', margin: '0' }}>
+                <Sparkles size={20} style={{ color: 'var(--color-primary)' }} /> Seeker's Portfolio
+              </h2>
+              {!isEditingPortfolio && (
                 <button 
+                  onClick={() => setIsEditingPortfolio(true)} 
                   className="btn btn-secondary" 
-                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', minHeight: 'auto', marginTop: '0.5rem' }}
-                  onClick={() => setSelectedConceptFilter(null)}
+                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', minHeight: 'auto' }}
                 >
-                  Clear Filter: {selectedConceptFilter}
+                  <Edit2 size={12} /> Edit Profile
                 </button>
               )}
             </div>
+
+            {isEditingPortfolio ? (
+              <form onSubmit={handleSavePortfolio}>
+                <div className="form-group">
+                  <label className="form-label">Seeker Display Name</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Short Bio / Target Role</label>
+                  <textarea 
+                    className="form-input" 
+                    style={{ minHeight: '60px', fontSize: '0.8rem' }}
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Tell us about your learning goals..."
+                  />
+                </div>
+                
+                <div className="portfolio-skills-section">
+                  <div className="skills-group">
+                    <span className="skills-group-title">
+                      <Sparkles size={12} /> Customize Additional Skills
+                    </span>
+                    <div className="concept-cloud-container" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                      {editSkills.length === 0 ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No additional skills added.</span>
+                      ) : (
+                        editSkills.map((skill, idx) => (
+                          <span key={idx} className="skill-tag-editable">
+                            {skill}
+                            <button type="button" onClick={() => handleRemoveSkill(skill)} className="btn-remove-skill">
+                              <X size={10} />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <div className="add-skill-form">
+                      <input 
+                        type="text" 
+                        className="form-input add-skill-input" 
+                        placeholder="Add skill (e.g. React, Python)"
+                        value={newSkillInput}
+                        onChange={(e) => setNewSkillInput(e.target.value)}
+                      />
+                      <button type="button" onClick={handleAddSkill} className="btn btn-secondary btn-add-skill">
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="skills-group" style={{ opacity: 0.8 }}>
+                    <span className="skills-group-title" style={{ color: 'var(--accent-gold)' }}>
+                      <Lock size={12} /> Earned Platform Skills (Locked)
+                    </span>
+                    <div className="concept-cloud-container" style={{ marginTop: '0.5rem' }}>
+                      {getGraspedConcepts().length === 0 ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No concepts unlocked yet. Complete Satsangs to earn.</span>
+                      ) : (
+                        getGraspedConcepts().map((concept, i) => (
+                          <span key={i} className="concept-cloud-tag" style={{ cursor: 'not-allowed' }}>
+                            🔒 {concept}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button type="button" onClick={() => { setIsEditingPortfolio(false); fetchUserProfile(user.id, user.token); }} className="btn btn-secondary" style={{ flex: 1 }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                    Save Portfolio
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div>
+                <p className="portfolio-bio-display">"{user.bio || 'Passionate Seeker on the GyanYatra.'}"</p>
+                
+                {/* Contribution heatwave map */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                    Activity Heatwave (Last 365 Days):
+                  </div>
+                  <ContributionHeatmap journals={journals} />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                    Concepts Grasped from Platform:
+                  </div>
+                  {getGraspedConcepts().length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No platform concepts unlocked yet. Submit reflections to discover.</div>
+                  ) : (
+                    <div className="concept-cloud-container">
+                      {getGraspedConcepts().map((concept, i) => (
+                        <span 
+                          key={i} 
+                          className={`concept-cloud-tag ${selectedConceptFilter === concept ? 'active' : ''}`}
+                          onClick={() => setSelectedConceptFilter(prev => prev === concept ? null : concept)}
+                        >
+                          {concept}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {selectedConceptFilter && (
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', minHeight: 'auto', marginTop: '0.5rem' }}
+                      onClick={() => setSelectedConceptFilter(null)}
+                    >
+                      Clear Filter: {selectedConceptFilter}
+                    </button>
+                  )}
+                </div>
+
+                {/* Additional Skills Display */}
+                {user.additionalSkills && user.additionalSkills.length > 0 && (
+                  <div style={{ marginBottom: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '0.75rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      Additional Core Skills:
+                    </div>
+                    <div className="concept-cloud-container">
+                      {user.additionalSkills.map((skill, i) => (
+                        <span key={i} className="concept-cloud-tag" style={{ borderColor: 'var(--color-info)', color: '#9bf' }}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Category statistics segment */}
+                <div className="category-stats-card">
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                    Learning Paradigms Coverages:
+                  </div>
+                  <div className="stats-grid">
+                    <div className="stats-grid">
+                      <div className="stat-box">
+                        <span className="stat-box-title">Total Topics</span>
+                        <span className="stat-box-num">{categoryStats.total}</span>
+                      </div>
+                      <div className="stat-box">
+                        <span className="stat-box-title">Platform Skills</span>
+                        <span className="stat-box-num">{getGraspedConcepts().length}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="category-row">
+                    <div className="category-header">
+                      <span className="category-name">Tech & Systems Design</span>
+                      <span className="category-count">{categoryStats.tech.count} logs</span>
+                    </div>
+                    <div className="category-progress-bar">
+                      <div className="category-progress-fill tech" style={{ width: `${categoryStats.total > 0 ? (categoryStats.tech.count / categoryStats.total) * 100 : 0}%` }}></div>
+                    </div>
+                    {categoryStats.tech.uniqueTopics.length > 0 && (
+                      <div className="category-topics-list">
+                        Concepts: {categoryStats.tech.uniqueTopics.slice(0, 4).join(", ")}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="category-row" style={{ marginTop: '0.75rem' }}>
+                    <div className="category-header">
+                      <span className="category-name">Growth & Productivity</span>
+                      <span className="category-count">{categoryStats.growth.count} logs</span>
+                    </div>
+                    <div className="category-progress-bar">
+                      <div className="category-progress-fill growth" style={{ width: `${categoryStats.total > 0 ? (categoryStats.growth.count / categoryStats.total) * 100 : 0}%` }}></div>
+                    </div>
+                    {categoryStats.growth.uniqueTopics.length > 0 && (
+                      <div className="category-topics-list">
+                        Concepts: {categoryStats.growth.uniqueTopics.slice(0, 4).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Seeker Leaderboards */}
@@ -1266,6 +1989,48 @@ function App() {
         </div>
       </div>
 
+      {/* GyanYatra Purpose Modal (Reveal Purpose) */}
+      {showPurposeModal && (
+        <div className="modal-overlay" onClick={() => setShowPurposeModal(false)}>
+          <div className="modal-content purpose-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowPurposeModal(false)}>
+              <X size={20} />
+            </button>
+            <div className="purpose-header text-center">
+              <BookOpen size={48} className="logo-icon gold-glow" style={{ margin: '0 auto 1rem' }} />
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: '800' }}>GyanYatra</h2>
+              <p className="purpose-tagline">Path of Knowledge</p>
+            </div>
+            <div className="purpose-body">
+              <div className="purpose-section">
+                <h3>❓ What is the purpose of GyanYatra?</h3>
+                <p>
+                  GyanYatra was created as a mindful, structured dashboard for developers to escape "Tutorial Hell". 
+                  Many software engineers consume hours of video tutorials, coding sessions, or architecture tech-talks passively, retaining very little information.
+                </p>
+                <p>
+                  GyanYatra forces active learning by taking raw learning notes, letting an AI-powered <strong>Acharya (Technical Guide)</strong> analyze their completeness and engineering depth, and prompting the user with dynamic review quizzes and memory boosters.
+                </p>
+              </div>
+              <div className="purpose-section">
+                <h3>💡 Why did we build it?</h3>
+                <ul>
+                  <li><strong>Active Retention:</strong> Encourages writing down takeaways in a structured way, recognizing Hinglish terms natively.</li>
+                  <li><strong>Spaced Repetition:</strong> Prompts seekers 24 hours later to recall key terms, reinforcing long-term memory pathways.</li>
+                  <li><strong>Gamified Growth:</strong> Grants Karma Points (XP) for completing quizzes and revision notes, showcasing skills on a guild leaderboard.</li>
+                  <li><strong>Mindful Study Spaces:</strong> Integrates sitar focusing drone sounds to relax the mind, filter out background noise, and aid concentration.</li>
+                </ul>
+              </div>
+              <div className="text-center" style={{ marginTop: '1.5rem' }}>
+                <button className="btn btn-gold" onClick={() => setShowPurposeModal(false)}>
+                  Continue Journey
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Overlay Modal for public user dashboards */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
@@ -1295,6 +2060,16 @@ function App() {
                 </div>
                 
                 <div className="modal-body">
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '1.25rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--accent-gold)' }}>
+                    "{selectedUser.bio || 'Passionate Seeker on the GyanYatra.'}"
+                  </p>
+
+                  {/* Contribution Heatwave Map */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="insight-section-title">Seeker's Contribution Calendar</h3>
+                    <ContributionHeatmap journals={selectedUserJournals} />
+                  </div>
+
                   {/* Grasped Concepts */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 className="insight-section-title">Verified Concepts Cloud</h3>
@@ -1304,7 +2079,7 @@ function App() {
                           .filter(j => j.isVerified && j.aiAnalysis && j.aiAnalysis.identifiedConcepts)
                           .flatMap(j => j.aiAnalysis.identifiedConcepts)
                       )).length === 0 ? (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No concepts unlocked yet.</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No concepts unlocked yet.</span>
                       ) : (
                         Array.from(new Set(
                           selectedUserJournals
@@ -1318,6 +2093,20 @@ function App() {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Additional Skills */}
+                  {selectedUser.additionalSkills && selectedUser.additionalSkills.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h3 className="insight-section-title">Additional Core Skills</h3>
+                      <div className="concept-cloud-container" style={{ marginTop: '0.5rem' }}>
+                        {selectedUser.additionalSkills.map((skill, i) => (
+                          <span key={i} className="concept-cloud-tag" style={{ borderColor: 'var(--color-info)', color: '#9bf' }}>
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Learning logs history */}
                   <div>

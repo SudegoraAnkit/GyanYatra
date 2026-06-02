@@ -19,4 +19,9 @@ public class User{
 
     @org.springframework.data.mongodb.core.index.Indexed(direction = org.springframework.data.mongodb.core.index.IndexDirection.DESCENDING)
     private Integer totalKarmaPoints;
+    private String bio;
+    private java.util.List<String> additionalSkills;
+
+    @org.springframework.data.annotation.Transient
+    private String token;
 }

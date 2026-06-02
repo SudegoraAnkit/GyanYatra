@@ -14,4 +14,7 @@ public interface JournalRepository extends MongoRepository<Journal, String> {
 
     // Check for duplicate logs in a specific Satsang to prevent Karma farming
     boolean existsByUserIdAndVideoUrl(String userId, String videoUrl);
+
+    // Retrieve all journals for a user to calculate streaks and heatwave
+    List<Journal> findByUserIdOrderByCreatedAtDesc(String userId);
 }

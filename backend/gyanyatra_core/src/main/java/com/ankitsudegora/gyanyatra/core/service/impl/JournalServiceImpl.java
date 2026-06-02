@@ -52,7 +52,7 @@ class JournalServiceImpl implements JournalService {
 
     @Override
     public @Nullable List<Journal> getRecentJournals(String userId) {
-        return repository.findTop10ByUserIdOrderByCreatedAtDesc(userId);
+        return repository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Override
