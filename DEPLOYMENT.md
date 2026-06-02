@@ -66,7 +66,9 @@ Since the backend is built using **Java 25**, standard buildpacks may not suppor
 | `SMTP_USERNAME` | `gyanyatra.mail@gmail.com` | OTP Sender Email Address |
 | `SMTP_PASSWORD` | *(Your Gmail App Password)* | Gmail App Password (16 characters, space-separated) |
 | `GYANYATRA_JWT_SECRET` | *(Any long secure random string)* | Secret for signing JWT tokens |
+| `GYANYATRA_ALLOWED_ORIGINS` | `https://gyan-yatra-seven.vercel.app` (comma separated list of frontend URLs) | Allowed CORS origins for production |
 | `JAVA_OPTS` | `-XX:MaxRAMPercentage=75.0 -XX:ActiveProcessorCount=1` | Limits memory usage to prevent Out-Of-Memory crashes on 512MB free tier |
+
 
 ---
 
