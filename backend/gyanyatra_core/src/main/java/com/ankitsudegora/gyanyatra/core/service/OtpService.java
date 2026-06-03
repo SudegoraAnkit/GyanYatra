@@ -10,6 +10,10 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @Service
 @Slf4j
@@ -22,6 +26,11 @@ public class OtpService {
 
     @Value("${spring.mail.username:}")
     private String fromEmail;
+
+    @Value("${gyanyatra.resend.api-key:}")
+    private String resendApiKey;
+
+    private final HttpClient httpClient = HttpClient.newBuilder().build();
 
     private static class OtpDetails {
         String otp;
@@ -47,12 +56,17 @@ public class OtpService {
         Thread.startVirtualThread(() -> sendOtpEmail(email, otp));
         
         return otp;
-
     }
 
     private void sendOtpEmail(String email, String otp) {
+        if (resendApiKey != null && !resendApiKey.trim().isEmpty()) {
+            sendOtpEmailViaResend(email, otp);
+            return;
+        }
+
+        // Fallback to standard SMTP
         if (mailSender == null || fromEmail == null || fromEmail.trim().isEmpty()) {
-            log.warn("SMTP email sender is not fully configured (spring.mail.username is empty). Skipping email dispatch.");
+            log.warn("SMTP email sender is not fully configured (spring.mail.username is empty) and Resend API key is missing. Skipping email dispatch.");
             return;
         }
         try {
@@ -62,9 +76,36 @@ public class OtpService {
             message.setSubject("GyanYatra Seeker Security Verification");
             message.setText("Welcome to GyanYatra!\n\nYour security verification OTP code is: " + otp + "\n\nThis code will expire in 5 minutes.\n\nPath of Knowledge.");
             mailSender.send(message);
-            log.info("OTP email successfully sent to: {}", email);
+            log.info("OTP email successfully sent to: {} via SMTP", email);
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {}: {}", email, e.getMessage(), e);
+            log.error("Failed to send OTP email to {} via SMTP: {}", email, e.getMessage(), e);
+        }
+    }
+
+    private void sendOtpEmailViaResend(String email, String otp) {
+        log.info("Attempting to send OTP email via Resend HTTP API to: {}", email);
+        try {
+            String jsonPayload = String.format(
+                "{\"from\":\"GyanYatra <onboarding@resend.dev>\",\"to\":\"%s\",\"subject\":\"GyanYatra Seeker Security Verification\",\"html\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
+                email, otp
+            );
+
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.resend.com/emails"))
+                .header("Authorization", "Bearer " + resendApiKey.trim())
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("OTP email successfully sent to: {} via Resend HTTP API", email);
+            } else {
+                log.error("Resend HTTP API returned error status {}: {}", response.statusCode(), response.body());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send OTP email to {} via Resend HTTP API: {}", email, e.getMessage(), e);
         }
     }
 
