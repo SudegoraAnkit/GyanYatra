@@ -63,8 +63,10 @@ Since the backend is built using **Java 25**, standard buildpacks may not suppor
 | :--- | :--- | :--- |
 | `SPRING_DATA_MONGODB_URI` | `mongodb+srv://gyanyatramail_db_user:<db_password>@cluster0.euxccjk.mongodb.net/gyanyatra?retryWrites=true&w=majority&appName=Cluster0` | Production Database connection string |
 | `GOOGLE_GEMINI_API_KEY` | *(Your Gemini API Key)* | AI Reflection/Meditation Insights Engine |
-| `SMTP_USERNAME` | `gyanyatra.mail@gmail.com` | OTP Sender Email Address |
-| `SMTP_PASSWORD` | *(Your Gmail App Password)* | Gmail App Password (16 characters, space-separated) |
+| `BREVO_API_KEY` | *(Your Brevo API Key)* | Required for cloud email notifications (replaces SMTP) |
+| `BREVO_SENDER_EMAIL` | `gyanyatra.mail@gmail.com` | Verified Brevo sender email address |
+| `SMTP_USERNAME` | `gyanyatra.mail@gmail.com` | Local Fallback SMTP Email (optional) |
+| `SMTP_PASSWORD` | *(Your Gmail App Password)* | Local Fallback SMTP Password (optional) |
 | `GYANYATRA_JWT_SECRET` | *(Any long secure random string)* | Secret for signing JWT tokens |
 | `GYANYATRA_ALLOWED_ORIGINS` | `https://gyan-yatra-seven.vercel.app` (comma separated list of frontend URLs) | Allowed CORS origins for production |
 | `JAVA_OPTS` | `-XX:MaxRAMPercentage=75.0 -XX:ActiveProcessorCount=1` | Limits memory usage to prevent Out-Of-Memory crashes on 512MB free tier |
@@ -93,6 +95,8 @@ For local development and testing, configurations are loaded via the `.env` file
 
 ```properties
 GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+BREVO_API_KEY=your_brevo_api_key_here
+BREVO_SENDER_EMAIL=gyanyatra.mail@gmail.com
 SMTP_USERNAME=gyanyatra.mail@gmail.com
 SMTP_PASSWORD=your_gmail_app_password_here
 SPRING_DATA_MONGODB_URI=mongodb+srv://gyanyatramail_db_user:<db_password>@cluster0.euxccjk.mongodb.net/gyanyatra?retryWrites=true&w=majority&appName=Cluster0

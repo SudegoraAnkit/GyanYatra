@@ -27,10 +27,14 @@ public class OtpService {
     @Value("${spring.mail.username:}")
     private String fromEmail;
 
-    @Value("${gyanyatra.resend.api-key:}")
-    private String resendApiKey;
+    @Value("${gyanyatra.brevo.api-key:}")
+    private String brevoApiKey;
+
+    @Value("${gyanyatra.brevo.sender-email:gyanyatra.mail@gmail.com}")
+    private String brevoSenderEmail;
 
     private final HttpClient httpClient = HttpClient.newBuilder().build();
+
 
     private static class OtpDetails {
         String otp;
@@ -59,14 +63,14 @@ public class OtpService {
     }
 
     private void sendOtpEmail(String email, String otp) {
-        if (resendApiKey != null && !resendApiKey.trim().isEmpty()) {
-            sendOtpEmailViaResend(email, otp);
+        if (brevoApiKey != null && !brevoApiKey.trim().isEmpty()) {
+            sendOtpEmailViaBrevo(email, otp);
             return;
         }
 
         // Fallback to standard SMTP
         if (mailSender == null || fromEmail == null || fromEmail.trim().isEmpty()) {
-            log.warn("SMTP email sender is not fully configured (spring.mail.username is empty) and Resend API key is missing. Skipping email dispatch.");
+            log.warn("SMTP email sender is not fully configured (spring.mail.username is empty) and Brevo API key is missing. Skipping email dispatch.");
             return;
         }
         try {
@@ -82,32 +86,34 @@ public class OtpService {
         }
     }
 
-    private void sendOtpEmailViaResend(String email, String otp) {
-        log.info("Attempting to send OTP email via Resend HTTP API to: {}", email);
+    private void sendOtpEmailViaBrevo(String email, String otp) {
+        log.info("Attempting to send OTP email via Brevo HTTP API to: {}", email);
         try {
             String jsonPayload = String.format(
-                "{\"from\":\"GyanYatra <onboarding@resend.dev>\",\"to\":\"%s\",\"subject\":\"GyanYatra Seeker Security Verification\",\"html\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
-                email, otp
+                "{\"sender\":{\"name\":\"GyanYatra\",\"email\":\"%s\"},\"to\":[{\"email\":\"%s\",\"name\":\"Seeker\"}],\"subject\":\"GyanYatra Seeker Security Verification\",\"htmlContent\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
+                brevoSenderEmail, email, otp
             );
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.resend.com/emails"))
-                .header("Authorization", "Bearer " + resendApiKey.trim())
+                .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                .header("api-key", brevoApiKey.trim())
                 .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.info("OTP email successfully sent to: {} via Resend HTTP API", email);
+                log.info("OTP email successfully sent to: {} via Brevo HTTP API", email);
             } else {
-                log.error("Resend HTTP API returned error status {}: {}", response.statusCode(), response.body());
+                log.error("Brevo HTTP API returned error status {}: {}", response.statusCode(), response.body());
             }
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {} via Resend HTTP API: {}", email, e.getMessage(), e);
+            log.error("Failed to send OTP email to {} via Brevo HTTP API: {}", email, e.getMessage(), e);
         }
     }
+
 
     public boolean validateOtp(String email, String otp) {
         OtpDetails details = otpCache.get(email);
