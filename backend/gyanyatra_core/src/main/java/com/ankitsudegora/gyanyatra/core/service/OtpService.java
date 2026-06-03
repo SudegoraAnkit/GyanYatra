@@ -43,10 +43,11 @@ public class OtpService {
         System.out.println("OTP: " + otp);
         System.out.println("========================================");
         
-        // Dispatch actual email
-        sendOtpEmail(email, otp);
+        // Dispatch actual email asynchronously in a virtual thread to prevent blocking the REST API
+        Thread.startVirtualThread(() -> sendOtpEmail(email, otp));
         
         return otp;
+
     }
 
     private void sendOtpEmail(String email, String otp) {
