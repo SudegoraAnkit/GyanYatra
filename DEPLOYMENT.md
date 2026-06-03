@@ -63,7 +63,9 @@ Since the backend is built using **Java 25**, standard buildpacks may not suppor
 | :--- | :--- | :--- |
 | `SPRING_DATA_MONGODB_URI` | `mongodb+srv://gyanyatramail_db_user:<db_password>@cluster0.euxccjk.mongodb.net/gyanyatra?retryWrites=true&w=majority&appName=Cluster0` | Production Database connection string |
 | `GOOGLE_GEMINI_API_KEY` | *(Your Gemini API Key)* | AI Reflection/Meditation Insights Engine |
+| `YOUTUBE_API_KEY` | *(Your YouTube Data API v3 Key)* | Optional key to fetch real video metadata from YouTube |
 | `BREVO_API_KEY` | *(Your Brevo API Key)* | Required for cloud email notifications (replaces SMTP) |
+
 | `BREVO_SENDER_EMAIL` | `gyanyatra.mail@gmail.com` | Verified Brevo sender email address |
 | `SMTP_USERNAME` | `gyanyatra.mail@gmail.com` | Local Fallback SMTP Email (optional) |
 | `SMTP_PASSWORD` | *(Your Gmail App Password)* | Local Fallback SMTP Password (optional) |
@@ -95,7 +97,9 @@ For local development and testing, configurations are loaded via the `.env` file
 
 ```properties
 GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+YOUTUBE_API_KEY=your_youtube_api_key_here
 BREVO_API_KEY=your_brevo_api_key_here
+
 BREVO_SENDER_EMAIL=gyanyatra.mail@gmail.com
 SMTP_USERNAME=gyanyatra.mail@gmail.com
 SMTP_PASSWORD=your_gmail_app_password_here
