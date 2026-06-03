@@ -30,7 +30,11 @@ public class OtpService {
     @Value("${gyanyatra.resend.api-key:}")
     private String resendApiKey;
 
+    @Value("${gyanyatra.resend.from-email:GyanYatra <onboarding@resend.dev>}")
+    private String resendFromEmail;
+
     private final HttpClient httpClient = HttpClient.newBuilder().build();
+
 
     private static class OtpDetails {
         String otp;
@@ -86,9 +90,10 @@ public class OtpService {
         log.info("Attempting to send OTP email via Resend HTTP API to: {}", email);
         try {
             String jsonPayload = String.format(
-                "{\"from\":\"GyanYatra <onboarding@resend.dev>\",\"to\":\"%s\",\"subject\":\"GyanYatra Seeker Security Verification\",\"html\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
-                email, otp
+                "{\"from\":\"%s\",\"to\":\"%s\",\"subject\":\"GyanYatra Seeker Security Verification\",\"html\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
+                resendFromEmail, email, otp
             );
+
 
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
