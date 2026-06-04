@@ -1396,7 +1396,9 @@ function App() {
           )}
         </div>
       </div>
-    )
+    );
+  }
+
   // Month Calendar Grid Builder
   const renderMonthCalendar = (userJournals) => {
     const now = new Date();
