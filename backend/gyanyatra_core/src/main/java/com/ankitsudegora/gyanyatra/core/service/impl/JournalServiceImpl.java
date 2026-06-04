@@ -1,5 +1,6 @@
 package com.ankitsudegora.gyanyatra.core.service.impl;
 
+import com.ankitsudegora.gyanyatra.core.exception.GyanYatraException;
 import com.ankitsudegora.gyanyatra.core.exception.ResourceNotFoundException;
 import com.ankitsudegora.gyanyatra.core.model.AcharyaAnalysis;
 import com.ankitsudegora.gyanyatra.core.model.Journal;
@@ -7,6 +8,7 @@ import com.ankitsudegora.gyanyatra.core.repository.JournalRepository;
 import com.ankitsudegora.gyanyatra.core.service.JournalService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,8 +29,7 @@ class JournalServiceImpl implements JournalService {
     public Journal submitLog(Journal log) {
         // Business Rule: Check for duplicate submissions
         if (repository.existsByUserIdAndVideoUrl(log.getUserId(), log.getVideoUrl())) {
-            // We will define DuplicateLogException in the Core Exception package
-            throw new RuntimeException("This Satsang has already been logged in your Yatra.");
+            throw new GyanYatraException("This Satsang has already been logged in your Yatra.", "GY-DUPLICATE-LOG", HttpStatus.CONFLICT);
         }
 
         log.setCreatedAt(LocalDateTime.now());

@@ -3,11 +3,21 @@ import {
   BookOpen, Award, CheckCircle, HelpCircle, LogOut, Video, 
   Send, Loader, ArrowRight, Play, ExternalLink, Flame, 
   Music, Volume2, Sparkles, X, RefreshCw, Check, Clock, User,
-  Edit2, Lock
+  Edit2, Lock, Sun, Moon
 } from 'lucide-react'
 import './index.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
+
+const getLocalYMD = (dateInput) => {
+  if (!dateInput) return ''
+  const d = new Date(dateInput)
+  if (isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 // ==========================================================================
 // DYNAMIC STREAK CALCULATIONS
@@ -19,15 +29,15 @@ const calculateStreaks = (userJournals) => {
 
   // Extract unique dates formatted as YYYY-MM-DD
   const dates = Array.from(new Set(
-    userJournals.map(j => new Date(j.createdAt).toISOString().split('T')[0])
-  )).sort((a, b) => new Date(b) - new Date(a)); // descending (newest first)
+    userJournals.map(j => getLocalYMD(j.createdAt))
+  )).filter(Boolean).sort((a, b) => new Date(b) - new Date(a)); // descending (newest first)
 
   if (dates.length === 0) {
     return { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const todayStr = getLocalYMD(new Date());
+  const yesterdayStr = getLocalYMD(new Date(Date.now() - 86400000));
 
   // 1. Daily Streak
   let daily = 0;
@@ -42,7 +52,7 @@ const calculateStreaks = (userJournals) => {
 
     while (nextIndex < dates.length) {
       checkDate.setDate(checkDate.getDate() - 1);
-      const checkStr = checkDate.toISOString().split('T')[0];
+      const checkStr = getLocalYMD(checkDate);
       if (dates.includes(checkStr)) {
         daily++;
         nextIndex = dates.indexOf(checkStr) + 1;
@@ -213,7 +223,7 @@ function ContributionHeatmap({ journals }) {
   const activityMap = {};
   journals.forEach(j => {
     if (j.createdAt) {
-      const dStr = new Date(j.createdAt).toISOString().split('T')[0];
+      const dStr = getLocalYMD(j.createdAt);
       activityMap[dStr] = (activityMap[dStr] || 0) + 1;
     }
   });
@@ -234,7 +244,7 @@ function ContributionHeatmap({ journals }) {
   endCompareDate.setHours(23,59,59,999);
 
   while (checkDate <= endCompareDate) {
-    const dStr = checkDate.toISOString().split('T')[0];
+    const dStr = getLocalYMD(checkDate);
     const count = activityMap[dStr] || 0;
     cells.push({
       dateStr: dStr,
@@ -329,6 +339,30 @@ function ContributionHeatmap({ journals }) {
 }
 
 // ==========================================================================
+// PREVENT OVERLAY SURF LOADER
+// ==========================================================================
+function SurfingLoader({ message }) {
+  return (
+    <div className="surfing-loader-overlay">
+      <div className="surfing-loader-content">
+        <div className="surfing-ocean">
+          <div className="surfing-wave"></div>
+          <div className="surfing-board">
+            <Sparkles className="surfing-sparkle" size={24} />
+          </div>
+        </div>
+        <h2 className="surfing-title">Surfing the GyanYatra</h2>
+        <p className="surfing-subtitle">{message || "Navigating the ocean of knowledge..."}</p>
+        <div className="surfing-quote">
+          "ज्ञानं परमं भूषणम्" <br />
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Knowledge is the supreme ornament</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================================================
 // MAIN REACT COMPONENT
 // ==========================================================================
 function App() {
@@ -341,6 +375,13 @@ function App() {
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState('')
   const [receivedOtp, setReceivedOtp] = useState('') // For simulated notification display
+  const [isGeneratingOtp, setIsGeneratingOtp] = useState(false)
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
+  const [isSubmittingJournal, setIsSubmittingJournal] = useState(false)
+  const [otpCooldown, setOtpCooldown] = useState(0)
+  
+  // Theme State
+  const [theme, setTheme] = useState(() => localStorage.getItem('gyanyatra_theme') || 'dark')
   
   // Portfolio Customize states
   const [isEditingPortfolio, setIsEditingPortfolio] = useState(false)
@@ -403,6 +444,8 @@ function App() {
   // Daily Streak State
   const [streak, setStreak] = useState(0)
   const [showStreakDetails, setShowStreakDetails] = useState(false)
+  const [showStreakModal, setShowStreakModal] = useState(false)
+  const [activeStreakTab, setActiveStreakTab] = useState('month')
   
   // Audio state (Web Audio API Synthesizer)
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
@@ -431,6 +474,22 @@ function App() {
       }
     }
   }, [])
+
+  // Sync theme with document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('gyanyatra_theme', theme)
+  }, [theme])
+
+  // OTP Cooldown Countdown timer
+  useEffect(() => {
+    if (otpCooldown > 0) {
+      const timer = setTimeout(() => {
+        setOtpCooldown(prev => prev - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [otpCooldown])
 
   // Poll for meditation completion
   useEffect(() => {
@@ -566,8 +625,13 @@ function App() {
   const handleRequestOtp = async (e) => {
     e.preventDefault()
     if (!regEmail.trim()) return
+    if (otpCooldown > 0) {
+      setErrorMsg(`Please wait ${otpCooldown} seconds before requesting a new security code.`)
+      return
+    }
     setErrorMsg('')
     setSuccessMsg('')
+    setIsGeneratingOtp(true)
     
     try {
       const res = await fetch(`${API_BASE}/yatra/users/login/otp/generate?email=${encodeURIComponent(regEmail)}`, {
@@ -576,23 +640,32 @@ function App() {
       
       if (res.ok) {
         setOtpSent(true)
+        setOtpCooldown(60)
         setSuccessMsg("OTP security code successfully dispatched. Please check your email inbox (and developer console logs if running locally).")
       } else {
-        setErrorMsg("Failed to request OTP. Ensure your email is correct.")
+        const errData = await res.json().catch(() => ({}))
+        setErrorMsg(errData.error || "Failed to request OTP. Ensure your email is correct.")
       }
     } catch (err) {
       setErrorMsg("Connection to GyanYatra server failed. Make sure backend is running.")
+    } finally {
+      setIsGeneratingOtp(false)
     }
   }
 
   // Verify OTP and Complete Login (Public Endpoint, issues JWT)
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
-    if (!otpCode.trim()) return
+    const trimmedOtp = otpCode.trim()
+    if (trimmedOtp.length !== 6 || !/^\d{6}$/.test(trimmedOtp)) {
+      setErrorMsg("Please enter a valid 6-digit numeric security code.")
+      return
+    }
     setErrorMsg('')
+    setIsVerifyingOtp(true)
     
     try {
-      const res = await fetch(`${API_BASE}/yatra/users/login/otp/verify?email=${encodeURIComponent(regEmail)}&otp=${encodeURIComponent(otpCode)}&name=${encodeURIComponent(regName)}`, {
+      const res = await fetch(`${API_BASE}/yatra/users/login/otp/verify?email=${encodeURIComponent(regEmail)}&otp=${encodeURIComponent(trimmedOtp)}&name=${encodeURIComponent(regName)}`, {
         method: 'POST'
       })
       
@@ -620,6 +693,8 @@ function App() {
       }
     } catch (err) {
       setErrorMsg("Connection failed during verification.")
+    } finally {
+      setIsVerifyingOtp(false)
     }
   }
 
@@ -745,6 +820,7 @@ function App() {
     if (!user || !videoUrl.trim() || !userNotes.trim()) return
     setErrorMsg('')
     setSuccessMsg('')
+    setIsSubmittingJournal(true)
     
     try {
       const res = await fetch(`${API_BASE}/yatra/journals`, {
@@ -818,6 +894,8 @@ function App() {
       }
     } catch (err) {
       setErrorMsg("Failed to connect to the backend server.")
+    } finally {
+      setIsSubmittingJournal(false)
     }
   }
 
@@ -1048,14 +1126,14 @@ function App() {
   // Daily study streak calculators
   const initializeStreak = (userId) => {
     localStorage.setItem(`gyanyatra_streak_${userId}`, '1')
-    localStorage.setItem(`gyanyatra_last_study_${userId}`, new Date().toISOString().split('T')[0])
+    localStorage.setItem(`gyanyatra_last_study_${userId}`, getLocalYMD(new Date()))
     setStreak(1)
   }
 
   const updateStreakCount = (userId) => {
     const savedStreak = localStorage.getItem(`gyanyatra_streak_${userId}`)
     const lastDate = localStorage.getItem(`gyanyatra_last_study_${userId}`)
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = getLocalYMD(new Date())
     
     if (!savedStreak) {
       setStreak(0)
@@ -1068,7 +1146,7 @@ function App() {
     } else {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
-      const yesterdayStr = yesterday.toISOString().split('T')[0]
+      const yesterdayStr = getLocalYMD(yesterday)
       
       if (lastDate === yesterdayStr) {
         setStreak(currentStreak)
@@ -1080,7 +1158,7 @@ function App() {
   }
 
   const recordStudyActivity = (userId) => {
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = getLocalYMD(new Date())
     const lastDate = localStorage.getItem(`gyanyatra_last_study_${userId}`)
     const savedStreak = localStorage.getItem(`gyanyatra_streak_${userId}`) || '0'
     let currentStreak = parseInt(savedStreak, 10)
@@ -1088,7 +1166,7 @@ function App() {
     if (lastDate !== todayStr) {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
-      const yesterdayStr = yesterday.toISOString().split('T')[0]
+      const yesterdayStr = getLocalYMD(yesterday)
 
       if (lastDate === yesterdayStr) {
         currentStreak += 1
@@ -1186,6 +1264,29 @@ function App() {
   if (!user) {
     return (
       <div className="app-container registration-container">
+        {/* Floating Theme Toggle */}
+        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 100 }}>
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+            className="btn btn-secondary" 
+            style={{ padding: '0.5rem', minHeight: 'auto', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+
+        {/* Global Surfing Loader */}
+        {(isGeneratingOtp || isVerifyingOtp || isSubmittingJournal) && (
+          <SurfingLoader 
+            message={
+              isGeneratingOtp ? "Dispatched Security OTP to your inbox..." :
+              isVerifyingOtp ? "Establishing Seeker credentials with Acharya..." :
+              "Engaging meditation to review your Wisdom Log..."
+            } 
+          />
+        )}
+
         <div className="card registration-card text-center">
           <div className="logo-section mb-4" style={{ justifyContent: 'center' }}>
             <BookOpen size={40} className="logo-icon" />
@@ -1224,8 +1325,19 @@ function App() {
                   required
                 />
               </div>
-              <button type="submit" className="btn btn-primary btn-block" style={{ width: '100%', marginTop: '1rem' }}>
-                Send Security OTP <ArrowRight size={16} />
+              <button 
+                type="submit" 
+                className="btn btn-primary btn-block" 
+                style={{ width: '100%', marginTop: '1rem' }}
+                disabled={otpCooldown > 0 || isGeneratingOtp}
+              >
+                {isGeneratingOtp ? (
+                  <><Loader size={16} className="spinner" /> Dispatched...</>
+                ) : otpCooldown > 0 ? (
+                  `Resend security code in ${otpCooldown}s`
+                ) : (
+                  <>Send Security OTP <ArrowRight size={16} /></>
+                )}
               </button>
             </form>
           ) : (
@@ -1237,8 +1349,11 @@ function App() {
                   className="form-input" 
                   placeholder="6-digit security code"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                   maxLength={6}
+                  minLength={6}
+                  pattern="[0-9]{6}"
+                  inputMode="numeric"
                   required
                 />
               </div>
@@ -1255,11 +1370,26 @@ function App() {
               </div>
               
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => { setOtpSent(false); setErrorMsg(''); setSuccessMsg(''); }} className="btn btn-secondary" style={{ flex: 1 }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setOtpSent(false); setErrorMsg(''); setSuccessMsg(''); }} 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1 }}
+                  disabled={isVerifyingOtp}
+                >
                   Back
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
-                  Verify & Enter <ArrowRight size={16} />
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ flex: 2 }}
+                  disabled={isVerifyingOtp || otpCode.length !== 6}
+                >
+                  {isVerifyingOtp ? (
+                    <><Loader size={16} className="spinner" /> Entering...</>
+                  ) : (
+                    <>Verify & Enter <ArrowRight size={16} /></>
+                  )}
                 </button>
               </div>
             </form>
@@ -1267,10 +1397,183 @@ function App() {
         </div>
       </div>
     )
-  }
+  // Month Calendar Grid Builder
+  const renderMonthCalendar = (userJournals) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-indexed
+
+    // First day of the month
+    const firstDay = new Date(year, month, 1);
+    const startDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday...
+
+    // Total days in the month
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    // Extract study dates of this month
+    const studyDates = new Set(
+      userJournals.map(j => getLocalYMD(j.createdAt))
+    );
+
+    const daysGrid = [];
+    // Empty slots for padding before the first day of the month
+    for (let i = 0; i < startDayOfWeek; i++) {
+      daysGrid.push({ day: null, dateStr: '', status: 'empty' });
+    }
+
+    // Days of the month
+    for (let d = 1; d <= totalDays; d++) {
+      const checkDate = new Date(year, month, d);
+      const dateStr = getLocalYMD(checkDate);
+      const hasStudied = studyDates.has(dateStr);
+      const isFuture = checkDate > now;
+      const isToday = dateStr === getLocalYMD(now);
+      
+      let status = 'missed';
+      if (hasStudied) status = 'completed';
+      else if (isToday && !hasStudied) status = 'today-pending';
+      else if (isFuture) status = 'future';
+
+      daysGrid.push({ day: d, dateStr, status });
+    }
+
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    return (
+      <div className="streak-month-view">
+        <h3 className="calendar-month-title">
+          {now.toLocaleString('default', { month: 'long' })} {year}
+        </h3>
+        <div className="calendar-grid-header">
+          {weekdays.map(wd => <span key={wd} className="calendar-weekday-label">{wd}</span>)}
+        </div>
+        <div className="calendar-grid-days">
+          {daysGrid.map((cell, idx) => {
+            if (cell.status === 'empty') {
+              return <div key={idx} className="calendar-cell empty" />;
+            }
+            return (
+              <div 
+                key={idx} 
+                className={`calendar-cell ${cell.status}`}
+                title={cell.status === 'completed' ? `Study completed on ${cell.dateStr}` : cell.dateStr}
+              >
+                <span className="day-number">{cell.day}</span>
+                {cell.status === 'completed' && <span className="cell-marker check">✓</span>}
+                {cell.status === 'missed' && <span className="cell-marker cross">✗</span>}
+                {cell.status === 'today-pending' && <span className="cell-marker pending">•</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Week-by-Week Progress List
+  const renderWeekProgress = (userJournals) => {
+    const getWeekRange = (weekOffset) => {
+      const today = new Date();
+      const day = today.getDay() || 7;
+      const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day + 1 - (weekOffset * 7));
+      const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+      return { mon, sun };
+    };
+
+    const studyDates = new Set(
+      userJournals.map(j => getLocalYMD(j.createdAt))
+    );
+
+    const last12Weeks = [];
+    for (let w = 0; w < 12; w++) {
+      const { mon, sun } = getWeekRange(w);
+      let studiedInWeek = false;
+      
+      const temp = new Date(mon);
+      while (temp <= sun) {
+        if (studyDates.has(getLocalYMD(temp))) {
+          studiedInWeek = true;
+          break;
+        }
+        temp.setDate(temp.getDate() + 1);
+      }
+
+      const rangeStr = `${mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${sun.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+      last12Weeks.push({
+        rangeStr,
+        studied: studiedInWeek,
+        isCurrent: w === 0
+      });
+    }
+
+    return (
+      <div className="streak-weeks-list">
+        {last12Weeks.map((wk, idx) => (
+          <div key={idx} className={`week-row ${wk.studied ? 'completed' : 'missed'} ${wk.isCurrent ? 'current' : ''}`}>
+            <span className="week-range">{wk.rangeStr} {wk.isCurrent && <span className="badge-current">This Week</span>}</span>
+            <span className={`week-status-tag ${wk.studied ? 'completed' : 'missed'}`}>
+              {wk.studied ? 'Active ✓' : 'Missed ✗'}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Year Months Grid Progress
+  const renderYearProgress = (userJournals) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const activeMonths = new Set(
+      userJournals.map(j => {
+        const d = new Date(j.createdAt);
+        if (d.getFullYear() === year) {
+          return d.getMonth();
+        }
+        return null;
+      }).filter(m => m !== null)
+    );
+
+    return (
+      <div className="streak-year-grid">
+        {monthNames.map((name, idx) => {
+          const hasStudied = activeMonths.has(idx);
+          const isFuture = idx > now.getMonth();
+          const isCurrent = idx === now.getMonth();
+          
+          let status = 'missed';
+          if (hasStudied) status = 'completed';
+          else if (isFuture) status = 'future';
+          else if (isCurrent) status = 'today-pending';
+
+          return (
+            <div key={idx} className={`month-card ${status} ${isCurrent ? 'current' : ''}`}>
+              <span className="month-name">{name}</span>
+              <div className="month-status-desc">
+                {status === 'completed' ? 'Graded ✓' : status === 'future' ? 'Locked' : 'Missed ✗'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="app-container">
+      {/* Global Surfing Loader */}
+      {(isGeneratingOtp || isVerifyingOtp || isSubmittingJournal) && (
+        <SurfingLoader 
+          message={
+            isGeneratingOtp ? "Dispatched Security OTP to your inbox..." :
+            isVerifyingOtp ? "Establishing Seeker credentials with Acharya..." :
+            "Engaging meditation to review your Wisdom Log..."
+          } 
+        />
+      )}
+
       {/* Header */}
       <header className="app-header">
         <div className="logo-section" onClick={() => setShowPurposeModal(true)} style={{ cursor: 'pointer' }} title="Click to view GyanYatra purpose & why it was built">
@@ -1334,6 +1637,14 @@ function App() {
                 <Award size={14} /> {user.totalKarmaPoints !== undefined ? user.totalKarmaPoints : 0} Karma
               </span>
             </div>
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.35rem 0.6rem', minHeight: 'auto', borderRadius: '50px', marginLeft: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
             <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem', minHeight: 'auto', borderRadius: '50px', marginLeft: '0.5rem' }} title="Log out">
               <LogOut size={14} />
             </button>

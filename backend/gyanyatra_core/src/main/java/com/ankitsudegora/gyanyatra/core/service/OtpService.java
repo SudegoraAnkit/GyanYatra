@@ -39,14 +39,26 @@ public class OtpService {
     private static class OtpDetails {
         String otp;
         LocalDateTime expiry;
+        LocalDateTime createdAt;
 
         OtpDetails(String otp, LocalDateTime expiry) {
             this.otp = otp;
             this.expiry = expiry;
+            this.createdAt = LocalDateTime.now();
         }
     }
 
     public String generateOtp(String email) {
+        OtpDetails existing = otpCache.get(email);
+        if (existing != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isBefore(existing.createdAt.plusSeconds(60))) {
+                long secondsLeft = 60 - java.time.Duration.between(existing.createdAt, now).toSeconds();
+                secondsLeft = Math.max(1, Math.min(60, secondsLeft));
+                throw new IllegalStateException("Rate limit exceeded. Please wait " + secondsLeft + " seconds before requesting a new OTP.");
+            }
+        }
+
         String otp = String.format("%06d", random.nextInt(1000000));
         otpCache.put(email, new OtpDetails(otp, LocalDateTime.now().plusMinutes(5)));
         log.info("Generated OTP for {}: {}", email, otp);

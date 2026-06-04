@@ -76,13 +76,19 @@ public class UserController {
      * Generate an OTP for login validation.
      */
     @PostMapping("/login/otp/generate")
-    public ResponseEntity<Map<String, String>> generateLoginOtp(@RequestParam String email) {
+    public ResponseEntity<?> generateLoginOtp(@RequestParam String email) {
         log.info("Request to generate OTP for email: {}", email);
-        String otp = otpService.generateOtp(email);
-        
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "OTP security code successfully dispatched.");
-        return ResponseEntity.ok(response);
+        try {
+            otpService.generateOtp(email);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "OTP security code successfully dispatched.");
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            log.warn("Rate limit exceeded for email: {}. Message: {}", email, e.getMessage());
+            Map<String, String> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
+        }
     }
 
     /**
@@ -94,8 +100,16 @@ public class UserController {
             @RequestParam String otp,
             @RequestParam(required = false) String name) {
         log.info("Request to verify OTP for email: {}", email);
-        
-        boolean isValid = otpService.validateOtp(email, otp);
+
+        if (otp == null || otp.trim().isEmpty() || otp.trim().length() != 6 || !otp.trim().matches("\\d{6}")) {
+            log.warn("Invalid OTP input format received for email: {}", email);
+            Map<String, String> err = new HashMap<>();
+            err.put("error", "Security OTP code must be a 6-digit number.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+        }
+
+        String cleanedOtp = otp.trim();
+        boolean isValid = otpService.validateOtp(email, cleanedOtp);
         if (!isValid) {
             Map<String, String> err = new HashMap<>();
             err.put("error", "Invalid or expired OTP. Please try again.");
