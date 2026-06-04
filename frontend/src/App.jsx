@@ -1396,7 +1396,9 @@ function App() {
           )}
         </div>
       </div>
-    )
+    );
+  }
+
   // Month Calendar Grid Builder
   const renderMonthCalendar = (userJournals) => {
     const now = new Date();
@@ -1586,45 +1588,16 @@ function App() {
         
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {/* Daily study streak */}
-          <div className="streak-badge-container" style={{ position: 'relative' }}>
+          <div className="streak-badge-container">
             <div 
               className="streak-badge" 
-              onClick={() => setShowStreakDetails(!showStreakDetails)}
+              onClick={() => setShowStreakModal(true)}
               style={{ cursor: 'pointer' }}
               title="Click to view detailed streaks (Daily, Weekly, Monthly, Yearly)"
             >
               <Flame size={14} />
               <span>{streaks.daily} Day Streak</span>
             </div>
-            
-            {showStreakDetails && (
-              <div className="streak-popover card">
-                <div className="streak-popover-header">
-                  <h3>Yatra Streaks</h3>
-                  <button onClick={() => setShowStreakDetails(false)} className="btn-close-popover">
-                    <X size={12} />
-                  </button>
-                </div>
-                <div className="streak-popover-body">
-                  <div className="streak-item">
-                    <span className="streak-label">Daily Streak:</span>
-                    <span className="streak-val">{streaks.daily} days</span>
-                  </div>
-                  <div className="streak-item">
-                    <span className="streak-label">Weekly Streak:</span>
-                    <span className="streak-val">{streaks.weekly} weeks</span>
-                  </div>
-                  <div className="streak-item">
-                    <span className="streak-label">Monthly Streak:</span>
-                    <span className="streak-val">{streaks.monthly} months</span>
-                  </div>
-                  <div className="streak-item">
-                    <span className="streak-label">Yearly Streak:</span>
-                    <span className="streak-val">{streaks.yearly} years</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="seeker-profile-badge">
@@ -2452,6 +2425,86 @@ function App() {
             ) : (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Failed to load seeker portfolio.</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Streak Details Modal */}
+      {showStreakModal && (
+        <div className="modal-overlay" onClick={() => setShowStreakModal(false)}>
+          <div className="modal-content streak-details-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowStreakModal(false)}>
+              <X size={20} />
+            </button>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Flame size={32} className="gold-glow" style={{ color: 'var(--accent-gold)' }} />
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0 }}>
+                    Your GyanYatra Streak Insights
+                  </h2>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0 0' }}>
+                    Visualizing your discipline across the week, month, and year
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              {/* Streak Summaries */}
+              <div className="streak-summary-cards">
+                <div className="streak-summary-card">
+                  <span className="summary-label">Daily Streak</span>
+                  <span className="summary-value">{streaks.daily} Days</span>
+                </div>
+                <div className="streak-summary-card">
+                  <span className="summary-label">Weekly Streak</span>
+                  <span className="summary-value">{streaks.weekly} Weeks</span>
+                </div>
+                <div className="streak-summary-card">
+                  <span className="summary-label">Monthly Streak</span>
+                  <span className="summary-value">{streaks.monthly} Months</span>
+                </div>
+                <div className="streak-summary-card">
+                  <span className="summary-label">Yearly Streak</span>
+                  <span className="summary-value">{streaks.yearly} Years</span>
+                </div>
+              </div>
+
+              {/* Modal Tabs */}
+              <div className="modal-tabs">
+                <button 
+                  className={`tab-btn ${activeStreakTab === 'week' ? 'active' : ''}`}
+                  onClick={() => setActiveStreakTab('week')}
+                >
+                  Week View
+                </button>
+                <button 
+                  className={`tab-btn ${activeStreakTab === 'month' ? 'active' : ''}`}
+                  onClick={() => setActiveStreakTab('month')}
+                >
+                  Month View (Calendar)
+                </button>
+                <button 
+                  className={`tab-btn ${activeStreakTab === 'year' ? 'active' : ''}`}
+                  onClick={() => setActiveStreakTab('year')}
+                >
+                  Year View
+                </button>
+              </div>
+
+              <div className="streak-modal-body" style={{ marginTop: '1.25rem' }}>
+                {activeStreakTab === 'week' && renderWeekProgress(journals)}
+                {activeStreakTab === 'month' && renderMonthCalendar(journals)}
+                {activeStreakTab === 'year' && renderYearProgress(journals)}
+              </div>
+
+              <div className="text-center" style={{ marginTop: '1.5rem' }}>
+                <button className="btn btn-gold" onClick={() => setShowStreakModal(false)}>
+                  Continue Surf
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
