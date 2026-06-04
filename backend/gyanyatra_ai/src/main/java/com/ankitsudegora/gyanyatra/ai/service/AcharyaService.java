@@ -47,8 +47,9 @@ public class AcharyaService {
         Evaluation Guidelines:
         1. Context: The Seeker may use a mix of Hindi/English (Hinglish). Understand their intent.
         2. Categorization & Rigor:
-           - If the topic is Technical/Coding/Systems Design: Evaluate based on software engineering standards (Time complexity, Edge cases, trade-offs). In 'relevantTrials', provide only valid LeetCode or GeeksforGeeks practice URLs.
-           - If the topic is Productivity/Self-Help/Career/Soft Skills: Evaluate based on practical execution, habit building, and behavioral insights. In 'relevantTrials', provide actionable exercises or reading resources (e.g. "Try the 2-minute rule daily", "Read summary of Atomic Habits"). Do NOT provide coding/LeetCode links for non-technical topics.
+           - If the topic is Coding/Data Structures & Algorithms (DSA): In 'relevantTrials', provide exactly 2 valid, fully-formed, clickable LeetCode or GeeksforGeeks practice problem URLs (e.g., "https://leetcode.com/problems/two-sum/"). Do NOT use text names.
+           - If the topic is Systems Design / Software Architecture: In 'relevantTrials', provide exactly 2 valid, fully-formed, clickable system design tutorial/article URLs (e.g., "https://www.geeksforgeeks.org/system-design/"). Do NOT provide coding/LeetCode problem links.
+           - If the topic is Productivity / Career / Soft Skills / Growth: In 'relevantTrials', provide exactly 2 valid, fully-formed, clickable book resource or article URLs (e.g., "https://jamesclear.com/atomic-habits" or similar). Do NOT provide coding/LeetCode/System Design links.
         3. Tone: Encouraging but intellectually demanding.
         
         Provide your output in valid JSON format with:
@@ -56,7 +57,7 @@ public class AcharyaService {
         - identifiedConcepts: List of concepts (technical keywords or productivity principles) they correctly grasped.
         - gapSuggestions: Critical concepts or application details they missed or misunderstood.
         - masteryScore: An integer between 0 and 100 (Karma points).
-        - relevantTrials: List of strings (relevant URLs or clear action items).
+        - relevantTrials: List of strings (ALL items MUST be fully-formed, valid, clickable URLs starting with 'https://').
         """;
 
     /**
@@ -157,7 +158,15 @@ public class AcharyaService {
                                  combined.contains("career") || combined.contains("motivation") ||
                                  combined.contains("focus") || combined.contains("discipline") ||
                                  combined.contains("success") || combined.contains("time management") ||
-                                 combined.contains("2-minute") || combined.contains("productivity");
+                                 combined.contains("2-minute");
+                                 
+        boolean isCoding = combined.contains("leetcode") || combined.contains("dsa") || 
+                           combined.contains("algo") || combined.contains("array") || 
+                           combined.contains("binary tree") || combined.contains("graph") || 
+                           combined.contains("sorting") || combined.contains("recursion") || 
+                           combined.contains("dynamic programming") || combined.contains("stack") || 
+                           combined.contains("queue") || combined.contains("linked list") || 
+                           combined.contains("heap");
         
         Lesson lesson = new Lesson();
         lesson.setUrl(videoUrl);
@@ -170,12 +179,20 @@ public class AcharyaService {
                 "What are the common digital/physical distractions in your workspace, and how do you sculpt your environment?",
                 "Explain the cue-routine-reward loop for one habit you want to build."
             ));
-        } else {
-            lesson.setConceptsCovered(List.of("Systems Design", "Software Engineering", "Scalability"));
+        } else if (isCoding) {
+            lesson.setConceptsCovered(List.of("Data Structures", "Algorithms", "Complexity Analysis"));
             lesson.setInterviewQuestions(List.of(
-                "What is the amortized time complexity of the operations in this system?",
-                "How would you handle boundary cases or empty inputs for this approach?",
-                "What are the core memory overhead or space complexity trade-offs?"
+                "What is the worst-case and amortized time complexity of your approach?",
+                "How would you handle boundary cases like null inputs or integer overflow?",
+                "What are the memory overheads or space complexity tradeoffs?"
+            ));
+        } else {
+            // Systems Design (Default)
+            lesson.setConceptsCovered(List.of("Systems Design", "Software Architecture", "Scalability"));
+            lesson.setInterviewQuestions(List.of(
+                "How would you handle high availability and replication lag in this database setup?",
+                "Where are the potential single points of failure, and how do you mitigate them?",
+                "How does introducing a message broker affect consistency bounds?"
             ));
         }
         
@@ -193,7 +210,15 @@ public class AcharyaService {
                                  combined.contains("career") || combined.contains("motivation") ||
                                  combined.contains("focus") || combined.contains("discipline") ||
                                  combined.contains("success") || combined.contains("time management") ||
-                                 combined.contains("2-minute") || combined.contains("productivity");
+                                 combined.contains("2-minute");
+                                 
+        boolean isCoding = combined.contains("leetcode") || combined.contains("dsa") || 
+                           combined.contains("algo") || combined.contains("array") || 
+                           combined.contains("binary tree") || combined.contains("graph") || 
+                           combined.contains("sorting") || combined.contains("recursion") || 
+                           combined.contains("dynamic programming") || combined.contains("stack") || 
+                           combined.contains("queue") || combined.contains("linked list") || 
+                           combined.contains("heap");
 
         int score = 70;
         List<String> concepts = new java.util.ArrayList<>();
@@ -207,33 +232,51 @@ public class AcharyaService {
             if (notes.toLowerCase().contains("2-minute") || notes.toLowerCase().contains("two-minute")) {
                 concepts.add("The 2-Minute Rule");
                 gaps.add("Failing to connect micro-habits to identity-based habit transformation");
-                trials.add("Try writing down your 2-minute rule checklist for the next 7 days");
-                trials.add("Read summary of Atomic Habits by James Clear");
+                trials.add("https://jamesclear.com/atomic-habits");
+                trials.add("https://gettingthingsdone.com/");
                 score += 15;
             } else {
                 gaps.add("Implementing complex productivity systems that cause burnout");
-                trials.add("Read the Getting Things Done (GTD) framework summary");
+                trials.add("https://gettingthingsdone.com/");
+                trials.add("https://jamesclear.com/habit-tracker");
                 score += 5;
             }
-        } else {
+        } else if (isCoding) {
             if (notes.toLowerCase().contains("stack") || notes.toLowerCase().contains("queue")) {
                 concepts.add("Stacks & Queues");
                 concepts.add("Linear Data Structures");
                 gaps.add("Space complexity overhead of double-stack queue implementations");
-                trials.add("LeetCode 225: Implement Stack using Queues");
-                trials.add("LeetCode 232: Implement Queue using Stacks");
+                trials.add("https://leetcode.com/problems/implement-stack-using-queues/");
+                trials.add("https://leetcode.com/problems/implement-queue-using-stacks/");
                 score += 15;
             } else if (notes.toLowerCase().contains("complexity") || notes.toLowerCase().contains("time") || notes.toLowerCase().contains("o(")) {
                 concepts.add("Time Complexity Bounds");
                 concepts.add("Big O Notation");
                 gaps.add("Difference between amortized time bounds and worst-case bounds");
-                trials.add("LeetCode 70: Climbing Stairs");
+                trials.add("https://leetcode.com/problems/climbing-stairs/");
+                trials.add("https://leetcode.com/problems/fibonacci-number/");
                 score += 10;
             } else {
-                concepts.add("Systems Engineering");
-                concepts.add("Distributed Systems Design");
+                concepts.add("Algorithms & Data Structures");
+                gaps.add("Verify edge cases like empty arrays and single element inputs");
+                trials.add("https://leetcode.com/problems/two-sum/");
+                trials.add("https://leetcode.com/problems/contains-duplicate/");
+            }
+        } else {
+            // Systems Design
+            concepts.add("Systems Engineering");
+            concepts.add("Distributed Systems Design");
+            
+            if (notes.toLowerCase().contains("cache") || notes.toLowerCase().contains("redis")) {
+                concepts.add("Caching Strategies");
+                gaps.add("Cache invalidation patterns and stampede mitigation");
+                trials.add("https://www.geeksforgeeks.org/system-design-caching/");
+                trials.add("https://github.com/donnemartin/system-design-primer#cache");
+                score += 15;
+            } else {
                 gaps.add("Verify edge cases like network partitions and idempotent consumers");
-                trials.add("LeetCode 1: Two Sum");
+                trials.add("https://www.geeksforgeeks.org/system-design/");
+                trials.add("https://github.com/donnemartin/system-design-primer");
             }
         }
 
