@@ -2129,3 +2129,103 @@ body {
   margin: 0 0 1.25rem 0;
   text-align: center;
 }
+
+/* Streaks Badge Active/Inactive Styling */
+.streak-badge.active {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border: 1px solid rgba(245, 158, 11, 0.5) !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3) !important;
+  animation: pulseGold 2s infinite ease-in-out !important;
+}
+
+.streak-badge.active svg {
+  color: #fbbf24 !important;
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6)) !important;
+  animation: flicker 1.2s infinite alternate !important;
+}
+
+.streak-badge.inactive {
+  background: rgba(156, 163, 175, 0.08) !important;
+  border: 1px solid rgba(156, 163, 175, 0.2) !important;
+  color: #9ca3af !important;
+  opacity: 0.6 !important;
+}
+
+.streak-badge.inactive svg {
+  color: #9ca3af !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+@keyframes pulseGold {
+  0% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
+  }
+}
+
+/* Calendar Streak Active Cell Highlight Styling */
+.calendar-cell.streak-active {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: #f59e0b !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35) !important;
+  animation: pulseGoldCell 2.5s infinite ease-in-out !important;
+}
+
+.calendar-cell.streak-active .cell-marker.streak-flame {
+  color: #f59e0b !important;
+  animation: flameFlicker 1.2s infinite alternate !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes flameFlicker {
+  0% { transform: scale(0.9) translateY(0); opacity: 0.8; }
+  50% { transform: scale(1.1) translateY(-1px); opacity: 1; }
+  100% { transform: scale(0.95) translateY(0); opacity: 0.9; }
+}
+
+@keyframes pulseGoldCell {
+  0%, 100% { box-shadow: 0 0 2px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+}
+
+/* Light Theme Additions for Streaks */
+:root[data-theme="light"] .streak-badge.active {
+  background: rgba(217, 119, 6, 0.1) !important;
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  color: #d97706 !important;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.2) !important;
+}
+
+:root[data-theme="light"] .streak-badge.active svg {
+  color: #d97706 !important;
+  filter: drop-shadow(0 0 3px rgba(217, 119, 6, 0.4)) !important;
+}
+
+:root[data-theme="light"] .streak-badge.inactive {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #6b7280 !important;
+  opacity: 0.5 !important;
+}
+
+:root[data-theme="light"] .calendar-cell.streak-active {
+  background: rgba(217, 119, 6, 0.12) !important;
+  border-color: #d97706 !important;
+  color: #b45309 !important;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.25) !important;
+}
+
+:root[data-theme="light"] .calendar-cell.streak-active .cell-marker.streak-flame {
+  color: #d97706 !important;
+}
+
