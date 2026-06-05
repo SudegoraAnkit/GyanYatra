@@ -2120,5 +2120,12 @@ body {
   border-color: rgba(79, 70, 229, 0.1);
 }
 
-
-
+.calendar-year-title,
+.calendar-week-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1.25rem 0;
+  text-align: center;
+}
