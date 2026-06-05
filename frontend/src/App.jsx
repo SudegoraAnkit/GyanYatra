@@ -45,7 +45,7 @@ const getLocalYMD = (dateInput) => {
 // ==========================================================================
 const calculateStreaks = (userJournals) => {
   if (!userJournals || userJournals.length === 0) {
-    return { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+    return { daily: 0, weekly: 0, monthly: 0, yearly: 0, activeStreakDates: new Set() };
   }
 
   // Extract unique dates formatted as YYYY-MM-DD
@@ -54,7 +54,7 @@ const calculateStreaks = (userJournals) => {
   )).filter(Boolean).sort((a, b) => new Date(b) - new Date(a)); // descending (newest first)
 
   if (dates.length === 0) {
-    return { daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+    return { daily: 0, weekly: 0, monthly: 0, yearly: 0, activeStreakDates: new Set() };
   }
 
   const todayStr = getLocalYMD(new Date());
@@ -62,12 +62,14 @@ const calculateStreaks = (userJournals) => {
 
   // 1. Daily Streak
   let daily = 0;
+  const activeStreakDates = new Set();
   let hasToday = dates.includes(todayStr);
   let hasYesterday = dates.includes(yesterdayStr);
 
   if (hasToday || hasYesterday) {
     let current = hasToday ? todayStr : yesterdayStr;
     daily = 1;
+    activeStreakDates.add(current);
     let nextIndex = dates.indexOf(current) + 1;
     let checkDate = new Date(current);
 
@@ -76,6 +78,7 @@ const calculateStreaks = (userJournals) => {
       const checkStr = getLocalYMD(checkDate);
       if (dates.includes(checkStr)) {
         daily++;
+        activeStreakDates.add(checkStr);
         nextIndex = dates.indexOf(checkStr) + 1;
       } else {
         break;
@@ -192,7 +195,7 @@ const calculateStreaks = (userJournals) => {
     }
   }
 
-  return { daily, weekly, monthly, yearly };
+  return { daily, weekly, monthly, yearly, activeStreakDates };
 };
 
 // ==========================================================================
@@ -1467,7 +1470,9 @@ function App() {
       else if (isToday && !hasStudied) status = 'today-pending';
       else if (isFuture) status = 'future';
 
-      daysGrid.push({ day: d, dateStr, status });
+      const isStreakActive = streaks.activeStreakDates && streaks.activeStreakDates.has(dateStr);
+
+      daysGrid.push({ day: d, dateStr, status, isStreakActive });
     }
 
     const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1488,13 +1493,27 @@ function App() {
             return (
               <div 
                 key={idx} 
-                className={`calendar-cell ${cell.status}`}
-                title={cell.status === 'completed' ? `Study completed on ${cell.dateStr}` : cell.dateStr}
+                className={`calendar-cell ${cell.status}${cell.isStreakActive ? ' streak-active' : ''}`}
+                title={
+                  cell.isStreakActive 
+                    ? `Active Streak Day! Completed on ${cell.dateStr}` 
+                    : cell.status === 'completed' 
+                      ? `Study completed on ${cell.dateStr}` 
+                      : cell.dateStr
+                }
               >
                 <span className="day-number">{cell.day}</span>
-                {cell.status === 'completed' && <span className="cell-marker check">✓</span>}
-                {cell.status === 'missed' && <span className="cell-marker cross">✗</span>}
-                {cell.status === 'today-pending' && <span className="cell-marker pending">•</span>}
+                {cell.isStreakActive ? (
+                  <span className="cell-marker streak-flame">
+                    <Flame size={10} fill="currentColor" />
+                  </span>
+                ) : (
+                  <>
+                    {cell.status === 'completed' && <span className="cell-marker check">✓</span>}
+                    {cell.status === 'missed' && <span className="cell-marker cross">✗</span>}
+                    {cell.status === 'today-pending' && <span className="cell-marker pending">•</span>}
+                  </>
+                )}
               </div>
             );
           })}
@@ -1631,7 +1650,7 @@ function App() {
           {/* Daily study streak */}
           <div className="streak-badge-container">
             <div 
-              className="streak-badge" 
+              className={`streak-badge ${streaks.daily > 0 ? 'active' : 'inactive'}`} 
               onClick={() => setShowStreakModal(true)}
               style={{ cursor: 'pointer' }}
               title="Click to view detailed streaks (Daily, Weekly, Monthly, Yearly)"
