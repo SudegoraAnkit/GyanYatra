@@ -9,15 +9,36 @@ import './index.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
 
+const safeParseDate = (dateInput) => {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) return dateInput;
+  
+  if (Array.isArray(dateInput)) {
+    // If it's a JSON array: [year, month, day, hour, minute, second]
+    // Note: JS Date month is 0-indexed, so we subtract 1 from month
+    const year = dateInput[0] || 1970;
+    const month = (dateInput[1] || 1) - 1;
+    const day = dateInput[2] || 1;
+    const hour = dateInput[3] || 0;
+    const minute = dateInput[4] || 0;
+    const second = dateInput[5] || 0;
+    const d = new Date(year, month, day, hour, minute, second);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  
+  const d = new Date(dateInput);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const getLocalYMD = (dateInput) => {
-  if (!dateInput) return ''
-  const d = new Date(dateInput)
-  if (isNaN(d.getTime())) return ''
+  const d = safeParseDate(dateInput)
+  if (!d) return ''
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
 
 // ==========================================================================
 // DYNAMIC STREAK CALCULATIONS
@@ -74,7 +95,7 @@ const calculateStreaks = (userJournals) => {
 
   // 2. Weekly Streak
   const weeks = Array.from(new Set(
-    userJournals.map(j => getWeekId(new Date(j.createdAt)))
+    userJournals.map(j => getWeekId(safeParseDate(j.createdAt)))
   )).sort((a, b) => b.localeCompare(a));
 
   let weekly = 0;
@@ -110,9 +131,9 @@ const calculateStreaks = (userJournals) => {
   // 3. Monthly Streak
   const months = Array.from(new Set(
     userJournals.map(j => {
-      const d = new Date(j.createdAt);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    })
+      const d = safeParseDate(j.createdAt);
+      return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : '';
+    }).filter(Boolean)
   )).sort((a, b) => b.localeCompare(a));
 
   let monthly = 0;
@@ -145,7 +166,10 @@ const calculateStreaks = (userJournals) => {
 
   // 4. Yearly Streak
   const years = Array.from(new Set(
-    userJournals.map(j => new Date(j.createdAt).getFullYear().toString())
+    userJournals.map(j => {
+      const d = safeParseDate(j.createdAt);
+      return d ? d.getFullYear().toString() : '';
+    }).filter(Boolean)
   )).sort((a, b) => Number(b) - Number(a));
 
   let yearly = 0;
@@ -250,7 +274,8 @@ function ContributionHeatmap({ journals }) {
       dateStr: dStr,
       count: count,
       dayOfWeek: checkDate.getDay(),
-      month: checkDate.getMonth()
+      month: checkDate.getMonth(),
+      year: checkDate.getFullYear()
     });
     checkDate.setDate(checkDate.getDate() + 1);
   }
@@ -273,11 +298,16 @@ function ContributionHeatmap({ journals }) {
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const monthLabels = [];
   let lastMonth = -1;
+  let lastYear = -1;
   columns.forEach((week, wIdx) => {
     const firstDay = week[0];
-    if (firstDay && firstDay.month !== lastMonth) {
-      monthLabels.push({ text: monthNames[firstDay.month], index: wIdx });
+    if (firstDay && (firstDay.month !== lastMonth || firstDay.year !== lastYear)) {
+      const labelText = firstDay.year !== lastYear 
+        ? `${monthNames[firstDay.month]} '${String(firstDay.year).slice(-2)}`
+        : monthNames[firstDay.month];
+      monthLabels.push({ text: labelText, index: wIdx });
       lastMonth = firstDay.month;
+      lastYear = firstDay.year;
     }
   });
 
@@ -1251,7 +1281,8 @@ function App() {
   // Format Date Helper
   const formatDate = (dateStr) => {
     if (!dateStr) return ''
-    const d = new Date(dateStr)
+    const d = safeParseDate(dateStr)
+    if (!d) return ''
     return d.toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -1509,15 +1540,20 @@ function App() {
     }
 
     return (
-      <div className="streak-weeks-list">
-        {last12Weeks.map((wk, idx) => (
-          <div key={idx} className={`week-row ${wk.studied ? 'completed' : 'missed'} ${wk.isCurrent ? 'current' : ''}`}>
-            <span className="week-range">{wk.rangeStr} {wk.isCurrent && <span className="badge-current">This Week</span>}</span>
-            <span className={`week-status-tag ${wk.studied ? 'completed' : 'missed'}`}>
-              {wk.studied ? 'Active ✓' : 'Missed ✗'}
-            </span>
-          </div>
-        ))}
+      <div className="streak-weeks-view">
+        <h3 className="calendar-week-title">
+          Weekly Progress (Last 12 Weeks)
+        </h3>
+        <div className="streak-weeks-list">
+          {last12Weeks.map((wk, idx) => (
+            <div key={idx} className={`week-row ${wk.studied ? 'completed' : 'missed'} ${wk.isCurrent ? 'current' : ''}`}>
+              <span className="week-range">{wk.rangeStr} {wk.isCurrent && <span className="badge-current">This Week</span>}</span>
+              <span className={`week-status-tag ${wk.studied ? 'completed' : 'missed'}`}>
+                {wk.studied ? 'Active ✓' : 'Missed ✗'}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -1530,8 +1566,8 @@ function App() {
 
     const activeMonths = new Set(
       userJournals.map(j => {
-        const d = new Date(j.createdAt);
-        if (d.getFullYear() === year) {
+        const d = safeParseDate(j.createdAt);
+        if (d && d.getFullYear() === year) {
           return d.getMonth();
         }
         return null;
@@ -1539,26 +1575,31 @@ function App() {
     );
 
     return (
-      <div className="streak-year-grid">
-        {monthNames.map((name, idx) => {
-          const hasStudied = activeMonths.has(idx);
-          const isFuture = idx > now.getMonth();
-          const isCurrent = idx === now.getMonth();
-          
-          let status = 'missed';
-          if (hasStudied) status = 'completed';
-          else if (isFuture) status = 'future';
-          else if (isCurrent) status = 'today-pending';
+      <div className="streak-year-view">
+        <h3 className="calendar-year-title">
+          Year Overview: {year}
+        </h3>
+        <div className="streak-year-grid">
+          {monthNames.map((name, idx) => {
+            const hasStudied = activeMonths.has(idx);
+            const isFuture = idx > now.getMonth();
+            const isCurrent = idx === now.getMonth();
+            
+            let status = 'missed';
+            if (hasStudied) status = 'completed';
+            else if (isFuture) status = 'future';
+            else if (isCurrent) status = 'today-pending';
 
-          return (
-            <div key={idx} className={`month-card ${status} ${isCurrent ? 'current' : ''}`}>
-              <span className="month-name">{name}</span>
-              <div className="month-status-desc">
-                {status === 'completed' ? 'Graded ✓' : status === 'future' ? 'Locked' : 'Missed ✗'}
+            return (
+              <div key={idx} className={`month-card ${status} ${isCurrent ? 'current' : ''}`}>
+                <span className="month-name">{name}</span>
+                <div className="month-status-desc">
+                  {status === 'completed' ? 'Graded ✓' : status === 'future' ? 'Locked' : 'Missed ✗'}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   };
