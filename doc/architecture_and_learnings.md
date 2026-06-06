@@ -90,6 +90,18 @@ GyanYatra consists of:
 
 ## 3. System & Tech Architecture
 
+### The Architectural Choice: Modular Monolith vs. Microservices
+When designing GyanYatra, I had to choose between a microservices-based system and a modular monolith. I intentionally chose a **Modular Monolith** architecture for the following reasons:
+
+1. **Reduced Operational Complexity:** 
+   As a solo developer, operational overhead is my greatest bottleneck. Microservices would require setting up service registries (e.g., Eureka), API Gateways, distributed configuration servers, separate Docker files, network isolation layers, and multi-pipeline CI/CD builds. By using a modular monolith, I have a single codebase that builds into a single self-contained JAR file.
+2. **Compile-Time Safety & Code Boundaries:**
+   GyanYatra is structured into separate Maven modules: `gyanyatra_core` (shared entities, schemas, and services), `gyanyatra_ai` (Gemini API integrations and classification engines), and `gyanyatra_api` (Spring Boot controllers and filters). This separation gives me strong logical boundaries. I can enforce dependencies through standard Maven scoping (`pom.xml`), preventing spaghetti code while maintaining the simplicity of single-unit deployment.
+3. **No Network Latency & IPC Overhead:**
+   Microservices communicate over networks (HTTP/gRPC), introducing deserialization costs, network latency, and connection pool management issues. In GyanYatra, my API layer communicates with the AI and database core layers via direct JVM method calls, resulting in sub-millisecond execution times.
+4. **Simple Transactional Management:**
+   Working with MongoDB across multi-step processes (e.g., updating user Karma while persisting verified journal entries) is straightforward using Spring Boot's built-in transaction boundaries. In a microservices architecture, this would require complex distributed transaction patterns like Sagas or Outbox patterns.
+
 ### Decoupling Message Queues for Light Deployment
 Initially, I designed the AI evaluation pipeline using an asynchronous messaging model with **RabbitMQ** (via `spring-boot-starter-amqp`) to handle heavy LLM processing in the background. While robust, this introduced severe hosting constraints for lightweight, free-tier cloud environments (requiring a separate RabbitMQ broker container, connection recovery handling, and increased memory footprint). 
 
@@ -271,26 +283,104 @@ The UI utilizes CSS custom properties to transition between Dark and Light mode 
 
 ---
 
-## 6. Challenges & Solutions
+## 6. Developer Guide
 
-### Challenge 1: Preventing OTP Abuse (Brute Force & Spam)
-* **Problem:** Because GyanYatra relies on passwordless email OTP verification, the backend is vulnerable to brute force attacks (trying every 6-digit combination) and SMTP spamming (generating thousands of emails to run up API billing).
-* **Solution:** 
-  1. **Strict Client-Side Validation:** The UI OTP input restricts entries to exactly 6 numeric characters. Non-digit keystrokes are actively stripped on `onChange`.
-  2. **Server-Side Type Hardening:** The API controller validates the input string structure against regex `^[0-9]{6}$` before sending it to the verification cache. Any invalid input is blocked with `400 Bad Request`.
-  3. **Dual-Layer Cooldowns:** When an OTP is requested, the client disables the request button and runs a 60-second visual countdown timer. Simultaneously, the backend `OtpService` records the request timestamp in an in-memory cache and rejects requests within 60 seconds with `429 Too Many Requests`.
+This developer guide details the folder structure, build pipelines, and environment variables necessary to spin up GyanYatra in a local workspace or package it for a production environment.
 
-### Challenge 2: AI Link Recommendations Consistency
-* **Problem:** Prompting Google Gemini to recommend references often led to broken URL formats, generic homepage links, or mixed categorizations (e.g., suggesting LeetCode coding links for a system design log).
-* **Solution:** Refined the prompt templates in `AcharyaService` to explicitly segment recommendations into three strict paradigms:
-  1. **Coding/DSA:** Returns links strictly to GeeksforGeeks or LeetCode problem paths.
-  2. **Systems Design:** Returns links to System Design primers or documentation tutorials (never LeetCode).
-  3. **Productivity/Growth:** Returns actual book references or specific habit challenges.
-  I also instructed the model to output a strict JSON list of objects containing valid, fully-formed, clickable HTTPS URLs, backed by a hardcoded fallback classifier that validates URL patterns before outputting them to the UI.
+### Workspace Structure
+GyanYatra is set up as a standard monorepo hosting both the React frontend and Maven Java modules:
+```
+GyanYatra/
+├── doc/                        # Architecture & User Guides
+├── backend/                    # Maven Java Monolith Root
+│   ├── gyanyatra_core/        # Core entity schemas, configurations, and core services
+│   ├── gyanyatra_ai/          # Gemini API integrations and grading prompts
+│   ├── gyanyatra_api/          # Spring Boot controllers, filters, and runner
+│   └── pom.xml                 # Monolith parent Maven configuration
+├── frontend/                   # React Vite project
+│   ├── src/
+│   │   ├── App.jsx             # Main dashboard UI component, states, and client logic
+│   │   ├── index.css           # Vanilla CSS layout, themes, and animations
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+### Local Development Setup
+
+#### 1. Database Setup
+GyanYatra connects to a MongoDB database. Spin up a local MongoDB instance on standard port `27017` or prepare a remote MongoDB Atlas URI.
+
+#### 2. Environment Variables Configuration
+Configure a `.env` or system properties file inside the API module `backend/gyanyatra_api/src/main/resources/application.properties`:
+```properties
+# MongoDB configurations
+spring.data.mongodb.uri=mongodb+srv://<username>:<password>@cluster.mongodb.net/gyanyatra
+
+# Google Gemini Credentials (from Google AI Studio)
+gemini.api.key=YOUR_GEMINI_STUDIO_API_KEY
+gemini.model.name=gemini-1.5-pro
+
+# Brevo SMTP Configuration
+spring.mail.host=smtp-relay.brevo.com
+spring.mail.port=587
+spring.mail.username=YOUR_BREVO_SMTP_LOGIN
+spring.mail.password=YOUR_BREVO_SMTP_PASSWORD
+gyanyatra.brevo.sender-email=gyanyatra.mail@gmail.com
+```
+
+#### 3. Spin Up the Backend Services
+Compile and start the Spring Boot application using Maven:
+```bash
+cd backend
+mvn clean package -DskipTests
+java -jar gyanyatra_api/target/gyanyatra_api-1.0.0.jar
+```
+Or, start it directly using the Spring Boot plugin:
+```bash
+mvn spring-boot:run -pl gyanyatra_api
+```
+The backend server starts on `http://localhost:8080`.
+
+#### 4. Spin Up the UI Client
+Run the Vite development server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The client dashboard opens on `http://localhost:5173`.
 
 ---
 
-## 7. Incident / Bug Postmortems
+## 7. Challenges & Solutions
+
+### Challenge 1: SMTP Email Delivery Latency and Connection Failures
+* **Problem:** 
+  During early testing of passwordless logins, I encountered two major hurdles with SMTP email delivery:
+  1. **Thread Blocking Latency:** Sending an email through an external relay (like Brevo SMTP) is a slow operation, taking anywhere from 1.5 to 3.5 seconds depending on network transit. In my initial implementation, the backend thread handling `POST /login/otp/generate` executed this synchronously. This blocked the HTTP response thread, causing the user interface button to hang and the loader to spin indefinitely before confirming the dispatch.
+  2. **Unconfigured / Local Dev Blockers:** When running the project locally in an offline environment, or for external developers who didn't set up Brevo credentials, the email service would throw connection timeouts and crash the request with a `500 Server Error`.
+* **Solution:**
+  - **Asynchronous Execution:** I wrapped the email dispatch operation inside a background thread pool (using Spring Boot's `@Async` scheduler). This immediately decoupled the SMTP network call from the REST controller response. The backend now generates the OTP, saves it to the cache, and instantly returns `200 OK` (taking less than 15ms), while sending the email in the background.
+  - **Console Logging Fallback:** If SMTP credentials are left blank in the properties configuration, the `MailSender` catches the exception gracefully and logs the generated OTP directly to the Java standard output console:
+    ```
+    [GYANYATRA] DEV FALLBACK: Generated OTP for arjun@gyanyatra.edu is: 847291
+    ```
+    This allows developers to copy the code straight from the logs and test the login flow instantly without setting up SMTP.
+
+### Challenge 2: Protecting Third-Party API Quotas (Brevo & Gemini)
+* **Problem:** 
+  Both the Gemini LLM API and the Brevo SMTP relay operate on free-tier limits. A malicious bot spammed with automated curl scripts could exhaust Brevo's 300 free daily emails or trigger rate-limiting blocks on Gemini.
+* **Solution:**
+  - **Double-Layer Rate Limiting:** I instituted a strict 60-second cooldown per email address.
+    - **Frontend:** Disables the OTP trigger button and fires a 60-second visual countdown.
+    - **Backend:** Tracks the generation timestamp in the `OtpService` cache. If a request is received within 60 seconds, it responds immediately with `429 Too Many Requests`.
+  - **Sandbox Simulation Mode:** Added a `simulate` header parameter. During UI development or integration testing, Acharya grades submissions instantly using keyphrase heuristics rather than calling the Gemini model, preserving my LLM token quotas.
+
+---
+
+## 8. Incident / Bug Postmortems
 
 ### Postmortem 1: The JSR-310 Integer Array Serialization Bug
 
@@ -347,7 +437,7 @@ I completely eliminated standard UTC serialization splits on the frontend, repla
 
 ---
 
-## 8. Personal Learnings as a Developer
+## 9. Personal Learnings as a Developer
 
 Building GyanYatra from start to finish was a masterclass in architectural trade-offs. Here are the key developer insights I'm taking away from this project:
 
