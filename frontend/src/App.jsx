@@ -6,6 +6,7 @@ import {
   Edit2, Lock, Sun, Moon
 } from 'lucide-react'
 import './index.css'
+import Tracker from './Tracker'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
 
@@ -403,6 +404,8 @@ function App() {
   const [user, setUser] = useState(null)
   const [regName, setRegName] = useState('')
   const [regEmail, setRegEmail] = useState('')
+  const [followingRoadmap, setFollowingRoadmap] = useState(() => localStorage.getItem('gyanyatra_follow_roadmap') === 'true')
+  const [currentView, setCurrentView] = useState('dashboard')
   
   // OTP Auth States
   const [otpSent, setOtpSent] = useState(false)
@@ -1686,7 +1689,21 @@ function App() {
       </header>
 
       {/* Main Grid */}
-      <div className="dashboard-grid">
+      {currentView === 'roadmap' ? (
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 20px 40px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '1rem 0' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setCurrentView('dashboard')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+            >
+              ← Back to Main Dashboard
+            </button>
+          </div>
+          <Tracker />
+        </div>
+      ) : (
+        <div className="dashboard-grid">
         {/* Left Column: Input Form, Glossary, Audio focus Deck */}
         <div>
           {errorMsg && (
@@ -2066,6 +2083,62 @@ function App() {
             )}
           </div>
 
+          {/* Seeker Java Roadmap Widget */}
+          {!followingRoadmap ? (
+            <div className="card java-roadmap-optin-card" style={{ border: '1px solid rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>☕</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#fbbf24', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Java Mastery Roadmap</h3>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Follow a premium, structured curriculum from Core Java to production systems.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setFollowingRoadmap(true);
+                  localStorage.setItem('gyanyatra_follow_roadmap', 'true');
+                }} 
+                className="btn btn-gold" 
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.5rem', fontSize: '0.8rem' }}
+              >
+                <Sparkles size={12} /> Start Roadmap Journey
+              </button>
+            </div>
+          ) : (
+            <div className="card java-roadmap-optin-card" style={{ border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>☕</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#10b981', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Java Roadmap Active</h3>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>You are currently following the Java mastery path.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setCurrentView(currentView === 'roadmap' ? 'dashboard' : 'roadmap')} 
+                  className="btn btn-gold" 
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.5rem', fontSize: '0.8rem' }}
+                >
+                  <BookOpen size={12} /> {currentView === 'roadmap' ? 'View Dashboard' : 'Open Roadmap Tracker'}
+                </button>
+                <button 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to stop following the Java Roadmap? Your progress will be saved in your browser, but the tracker will be hidden.")) {
+                      setFollowingRoadmap(false);
+                      localStorage.setItem('gyanyatra_follow_roadmap', 'false');
+                      setCurrentView('dashboard');
+                    }
+                  }} 
+                  className="btn btn-secondary" 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'auto', padding: '0.5rem', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', fontSize: '0.8rem' }}
+                  title="Stop following roadmap"
+                >
+                  Stop
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Seeker Leaderboards */}
           <div className="card leaderboard-widget">
             <div className="flex-between">
@@ -2332,6 +2405,7 @@ function App() {
           </div>
         </div>
       </div>
+      )}
 
       {/* GyanYatra Purpose Modal (Reveal Purpose) */}
       {showPurposeModal && (
