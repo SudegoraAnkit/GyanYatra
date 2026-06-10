@@ -6,6 +6,22 @@
     "color": "#f59e0b",
     "topics": [
       {
+        "id": "java-basics",
+        "title": "Java Fundamentals & Basics",
+        "subtopics": [
+          "Java features (Platform independence, JVM/JRE/JDK architecture)",
+          "Variables, Constants, and Scope rules",
+          "Primitive Data Types vs Reference Data Types",
+          "Operators (Arithmetic, Relational, Logical, Bitwise, Shift, Ternary)",
+          "Type casting (Implicit automatic widening vs Explicit narrowing)",
+          "Wrapper classes, Autoboxing and Unboxing",
+          "Scanner class, BufferedReader, and console input/output",
+          "Control statements (nested if-else, switch expressions)",
+          "Loops (for, while, do-while, enhanced for-each)",
+          "Control transfer (break, continue, labels)"
+        ]
+      },
+      {
         "id": "jvm-architecture",
         "title": "JVM Architecture",
         "subtopics": [
@@ -291,6 +307,19 @@
           "Tomcat clustering & session replication",
           "Tuning thread pool (Executor)"
         ]
+      },
+      {
+        "id": "reflection-networking",
+        "title": "Java Reflection & Networking",
+        "subtopics": [
+          "Reflection API (Class, Field, Method, Constructor classes)",
+          "Inspecting and modifying private members dynamically",
+          "Dynamic proxies (java.lang.reflect.Proxy) and bytecode instrumentation",
+          "Socket programming (TCP Sockets, ServerSocket)",
+          "DatagramSocket & DatagramPacket for UDP communication",
+          "URL, URLConnection, and HttpURLConnection classes",
+          "Java RMI (Remote Method Invocation) and object serialization details"
+        ]
       }
     ]
   },
@@ -399,7 +428,10 @@
           "String manipulation (in-place, StringBuilder)",
           "Sorting: QuickSort, MergeSort, HeapSort internals",
           "Searching: Binary search variants",
-          "Matrix traversal patterns"
+          "Matrix traversal patterns",
+          "String pattern matching algorithms (Naive, KMP, Rabin-Karp)",
+          "Sliding window (fixed size vs dynamic shrinkable window)",
+          "Two pointers (opposite directions vs same direction)"
         ]
       },
       {
@@ -495,7 +527,10 @@
           "Fast exponentiation",
           "Randomized algorithms (QuickSelect)",
           "Time & space complexity analysis",
-          "Amortized analysis"
+          "Amortized analysis",
+          "Greedy algorithms paradigm & interval scheduling",
+          "Hashing fundamentals (Hash functions, Collision Resolution via chaining & open addressing)",
+          "Recursion fundamentals (Base case, stack frame execution, tail vs head recursion)"
         ]
       }
     ]
@@ -630,7 +665,14 @@
           "Circuit breaker: Resilience4j integration",
           "Distributed tracing: Sleuth + Zipkin / Micrometer Tracing",
           "Spring Cloud OpenFeign (declarative HTTP client)",
-          "Spring Cloud Contract (consumer-driven contracts)"
+          "Spring Cloud Contract (consumer-driven contracts)",
+          "Spring Cloud Gateway (routing, filters, gateway rate limiting)",
+          "Netflix Eureka service registry and Consul discovery client",
+          "Spring Cloud LoadBalancer client-side routing and custom load balancers",
+          "Resilience4j integration (CircuitBreaker, RateLimiter, Retry, Bulkhead)",
+          "Spring Cloud Stream for event-driven messaging (Kafka, RabbitMQ integration)",
+          "Distributed tracing context propagation (OpenTelemetry, Zipkin)",
+          "Spring Cloud Config Server & secure Vault config integration"
         ]
       },
       {
@@ -722,7 +764,16 @@
           "Distributed transactions",
           "Data consistency patterns",
           "Strangler fig migration pattern",
-          "12-factor app methodology"
+          "12-factor app methodology",
+          "Monolithic vs Microservices architecture tradeoffs",
+          "Decomposition patterns (by business capability, by subdomain)",
+          "Database-per-service vs Shared Database tradeoffs",
+          "API Gateway pattern (routing, request interception, edge rate limiting)",
+          "Service Discovery and Registry (dynamic locator mechanisms)",
+          "Resilience & Circuit Breaking (Retry, Rate Limiter, Bulkhead patterns)",
+          "Saga pattern (choreography vs orchestration) for distributed transactions",
+          "Outbox pattern for reliable event publishing",
+          "CQRS (Command Query Responsibility Segregation) pattern"
         ]
       },
       {
@@ -742,7 +793,12 @@
           "Compacted topics",
           "Retention policies",
           "Replication factor & ISR",
-          "Kafka vs RabbitMQ tradeoffs"
+          "Kafka vs RabbitMQ tradeoffs",
+          "ZooKeeperless KRaft mode (Kafka Raft consensus metadata protocol)",
+          "New Consumer Group Protocol (KIP-848 for faster rebalances)",
+          "Share Groups / Queues for Kafka (KIP-932 & KIP-1240 point-to-point messaging)",
+          "Tiered Storage (decoupling log storage from compute)",
+          "Broker & Log Directory Cordoning (KIP-1066 maintenance mode)"
         ]
       },
       {
