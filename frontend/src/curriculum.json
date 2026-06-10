@@ -106,7 +106,11 @@
           "Fork/Join framework",
           "Virtual Threads (Project Loom)",
           "Structured Concurrency (Java 21+)",
-          "java.util.concurrent package overview"
+          "java.util.concurrent package overview",
+          "Java Memory Model (JMM) internals",
+          "Happens-before relationship",
+          "Instruction reordering & memory barriers",
+          "Lock-free data structures & CAS (Compare-And-Swap)"
         ]
       },
       {
@@ -203,6 +207,35 @@
           "ResultSet types and concurrency",
           "CLOB, BLOB handling",
           "JDBC 4.x auto-loading drivers"
+        ]
+      },
+      {
+        "id": "build-tools",
+        "title": "Build Tools (Maven & Gradle)",
+        "subtopics": [
+          "Maven build lifecycle and phases",
+          "POM configuration (dependencies, dependencyManagement, plugins, profiles)",
+          "Gradle build lifecycle & settings.gradle vs build.gradle",
+          "Gradle configurations (implementation vs api vs compileOnly vs runtimeOnly)",
+          "Multi-module project architecture and inter-module dependencies",
+          "Dependency resolution conflicts, version alignment, and exclusions",
+          "Maven and Gradle wrappers",
+          "Custom build plugins and lifecycle hooks"
+        ]
+      },
+      {
+        "id": "testing-frameworks",
+        "title": "Testing & Code Quality",
+        "subtopics": [
+          "JUnit 5 lifecycle, assertions, and custom extensions",
+          "Parameterized & dynamic test suites",
+          "Mockito basics (mock, spy, stubbing, verification)",
+          "Mockito ArgumentCaptor & custom verification matchers",
+          "AssertJ fluent assertions and custom assertions",
+          "Mutation testing (PITest) concepts & execution",
+          "Code coverage metrics (JaCoCo) and threshold gates",
+          "ArchUnit for architectural validation",
+          "Mocking static methods & constructors"
         ]
       }
     ]
@@ -539,7 +572,12 @@
           "Specifications (dynamic queries)",
           "Spring Data MongoDB",
           "Spring Data Redis",
-          "Auditing (@CreatedDate, @LastModifiedDate)"
+          "Auditing (@CreatedDate, @LastModifiedDate)",
+          "Hibernate first-level vs second-level cache",
+          "Hibernate dirty checking & session state management",
+          "N+1 query problem solutions (JOIN FETCH, EntityGraph)",
+          "Transaction propagation behaviors (REQUIRED, REQUIRES_NEW, etc.)",
+          "Transaction isolation levels vs database concurrency"
         ]
       },
       {
@@ -558,7 +596,11 @@
           "CORS configuration",
           "Role vs Authority",
           "Custom AuthenticationProvider",
-          "Session management"
+          "Session management",
+          "Java Keystores & Truststores (keytool utility)",
+          "SSL/TLS handshake & JSSE configuration in Java",
+          "HMAC, RSA, and ECDSA signature algorithms in JWTs",
+          "JWKS (JSON Web Key Sets) endpoint verification"
         ]
       },
       {
@@ -923,7 +965,11 @@
           "Skopeo for image inspection",
           "Container networking (bridge, host, none, overlay)",
           "Container security (seccomp, AppArmor, capabilities)",
-          "Image scanning (Trivy, Grype)"
+          "Image scanning (Trivy, Grype)",
+          "JVM Container Awareness & cgroups v1 vs v2 limits",
+          "Heap sizing in containers (-XX:MaxRAMPercentage)",
+          "Daemon-less container builds using Google Jib",
+          "Cloud Native Buildpacks for Spring Boot applications"
         ]
       }
     ]
