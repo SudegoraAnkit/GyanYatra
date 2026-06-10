@@ -1700,7 +1700,7 @@ function App() {
               ← Back to Main Dashboard
             </button>
           </div>
-          <Tracker />
+          <Tracker user={user} />
         </div>
       ) : (
         <div className="dashboard-grid">

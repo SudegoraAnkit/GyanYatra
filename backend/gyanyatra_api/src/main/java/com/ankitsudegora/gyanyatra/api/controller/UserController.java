@@ -140,4 +140,22 @@ public class UserController {
             return ResponseEntity.ok(saved);
         }
     }
+
+    @GetMapping("/{id}/roadmap")
+    public ResponseEntity<Map<String, Object>> getRoadmapData(@PathVariable String id) {
+        return userRepository.findById(id)
+                .map(user -> ResponseEntity.ok(user.getRoadmapData() != null ? user.getRoadmapData() : new HashMap<String, Object>()))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/roadmap")
+    public ResponseEntity<User> updateRoadmapData(@PathVariable String id, @RequestBody Map<String, Object> roadmapData) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    user.setRoadmapData(roadmapData);
+                    user.setUpdatedAt(LocalDateTime.now());
+                    return ResponseEntity.ok(userRepository.save(user));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
