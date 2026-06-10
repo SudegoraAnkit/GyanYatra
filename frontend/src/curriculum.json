@@ -1,0 +1,996 @@
+[
+  {
+    "id": "core-java",
+    "section": "Core Java",
+    "icon": "☕",
+    "color": "#f59e0b",
+    "topics": [
+      {
+        "id": "jvm-architecture",
+        "title": "JVM Architecture",
+        "subtopics": [
+          "Class Loader Subsystem",
+          "Runtime Data Areas (Heap, Stack, Method Area, PC Register, Native Stack)",
+          "Execution Engine (Interpreter, JIT Compiler, Garbage Collector)",
+          "Native Method Interface (JNI)",
+          "Bootstrap vs Extension vs Application ClassLoader",
+          "ClassLoader delegation model",
+          "bytecode verification"
+        ]
+      },
+      {
+        "id": "oop",
+        "title": "OOP Fundamentals",
+        "subtopics": [
+          "Classes & Objects",
+          "Constructors & Initialization blocks",
+          "this & super keywords",
+          "Inheritance (single, multilevel)",
+          "Method Overriding vs Overloading",
+          "Polymorphism (compile-time vs runtime)",
+          "Encapsulation & access modifiers",
+          "Abstraction — abstract classes",
+          "Interfaces — default & static methods",
+          "Interface vs Abstract Class tradeoffs",
+          "Composition over Inheritance",
+          "final keyword — class, method, variable",
+          "Object class methods (equals, hashCode, toString, clone)"
+        ]
+      },
+      {
+        "id": "exception-handling",
+        "title": "Exception Handling",
+        "subtopics": [
+          "Checked vs Unchecked exceptions",
+          "Exception hierarchy (Throwable → Error vs Exception)",
+          "try-catch-finally",
+          "try-with-resources",
+          "Multi-catch blocks",
+          "Custom exceptions",
+          "Exception chaining (initCause, getCause)",
+          "Rethrowing exceptions",
+          "When NOT to use exceptions"
+        ]
+      },
+      {
+        "id": "generics",
+        "title": "Generics",
+        "subtopics": [
+          "Why generics (type erasure problem before generics)",
+          "Generic classes & methods",
+          "Bounded type parameters (<T extends Comparable>)",
+          "Wildcards: ?, ? extends T, ? super T",
+          "PECS principle (Producer Extends, Consumer Super)",
+          "Type erasure internals",
+          "Generic interfaces",
+          "Reifiable vs non-reifiable types"
+        ]
+      },
+      {
+        "id": "collections",
+        "title": "Collections Framework",
+        "subtopics": [
+          "Collection hierarchy (Iterable → Collection → List/Set/Queue)",
+          "ArrayList vs LinkedList internals & tradeoffs",
+          "HashMap internals (hashing, buckets, load factor, resize)",
+          "HashMap vs LinkedHashMap vs TreeMap",
+          "HashSet vs LinkedHashSet vs TreeSet",
+          "ArrayDeque vs LinkedList as Queue/Stack",
+          "PriorityQueue internals",
+          "ConcurrentHashMap vs Collections.synchronizedMap",
+          "WeakHashMap, IdentityHashMap, EnumMap",
+          "Fail-fast vs Fail-safe iterators",
+          "Comparable vs Comparator",
+          "Collections utility class",
+          "Unmodifiable vs Immutable collections",
+          "Arrays.asList vs List.of tradeoffs"
+        ]
+      },
+      {
+        "id": "multithreading",
+        "title": "Multithreading & Concurrency",
+        "subtopics": [
+          "Thread lifecycle (NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED)",
+          "Creating threads: Thread vs Runnable vs Callable",
+          "Race conditions — what causes them",
+          "synchronized keyword (method vs block)",
+          "volatile keyword — visibility vs atomicity",
+          "Locks: ReentrantLock, ReadWriteLock, StampedLock",
+          "Deadlock, Livelock, Starvation",
+          "wait(), notify(), notifyAll()",
+          "Thread pools: Executors, ExecutorService",
+          "Future, CompletableFuture",
+          "CountDownLatch, CyclicBarrier, Semaphore, Phaser",
+          "Atomic classes (AtomicInteger, AtomicReference)",
+          "ThreadLocal",
+          "Fork/Join framework",
+          "Virtual Threads (Project Loom)",
+          "Structured Concurrency (Java 21+)",
+          "java.util.concurrent package overview"
+        ]
+      },
+      {
+        "id": "memory-jvm",
+        "title": "Memory Management & Profiling",
+        "subtopics": [
+          "Heap regions: Young Gen (Eden, S0, S1), Old Gen, Metaspace",
+          "GC algorithms: Serial, Parallel, CMS, G1, ZGC, Shenandoah",
+          "Minor GC vs Major GC vs Full GC",
+          "GC tuning flags (-Xms, -Xmx, -XX:NewRatio)",
+          "Memory leaks — common causes (static refs, listeners, caches)",
+          "Heap dumps & analyzing with MAT / VisualVM",
+          "Thread dumps & analyzing deadlocks",
+          "JVM profiling tools: JFR, JMC, Async-profiler",
+          "Off-heap memory, DirectByteBuffer",
+          "OutOfMemoryError types and causes",
+          "Finalization & Phantom/Weak/Soft references"
+        ]
+      },
+      {
+        "id": "java-streams",
+        "title": "Java Streams API",
+        "subtopics": [
+          "Stream pipeline: source → intermediate → terminal",
+          "Lazy evaluation — why it matters",
+          "map vs flatMap",
+          "filter, reduce, collect",
+          "Collectors: toList, groupingBy, partitioningBy, joining",
+          "Stream.of, Arrays.stream, Collection.stream",
+          "Parallel streams — when to use, when NOT to",
+          "Infinite streams: iterate, generate",
+          "Optional — avoiding NPE",
+          "Primitive streams: IntStream, LongStream, DoubleStream",
+          "Stream vs Collection tradeoffs",
+          "Custom Collectors"
+        ]
+      },
+      {
+        "id": "java-io",
+        "title": "Java I/O API",
+        "subtopics": [
+          "Byte streams vs Character streams",
+          "InputStream / OutputStream hierarchy",
+          "Reader / Writer hierarchy",
+          "BufferedReader, BufferedWriter",
+          "FileInputStream, FileOutputStream",
+          "ObjectInputStream / ObjectOutputStream (Serialization)",
+          "Serialization pitfalls (serialVersionUID, transient)",
+          "NIO: Path, Files, FileSystem",
+          "NIO Channels & Buffers",
+          "WatchService for file changes",
+          "Memory-mapped files",
+          "NIO.2 async file I/O"
+        ]
+      },
+      {
+        "id": "annotations",
+        "title": "Annotations",
+        "subtopics": [
+          "Built-in annotations (@Override, @Deprecated, @SuppressWarnings)",
+          "Meta-annotations (@Retention, @Target, @Documented, @Inherited)",
+          "Custom annotation creation",
+          "Retention policies (SOURCE, CLASS, RUNTIME)",
+          "Annotation processing at compile time (APT)",
+          "Reflection-based annotation processing at runtime",
+          "Repeatable annotations"
+        ]
+      },
+      {
+        "id": "records",
+        "title": "Records & Modern Java Types",
+        "subtopics": [
+          "Records — immutable data carriers",
+          "Record components & compact constructors",
+          "Record vs class vs Lombok @Value tradeoffs",
+          "Sealed classes & interfaces",
+          "Pattern matching for instanceof",
+          "Pattern matching in switch (Java 21)",
+          "Text blocks",
+          "var (local variable type inference)"
+        ]
+      },
+      {
+        "id": "jdbc",
+        "title": "JDBC",
+        "subtopics": [
+          "JDBC architecture (Driver, Connection, Statement, ResultSet)",
+          "DriverManager vs DataSource",
+          "PreparedStatement vs Statement (SQL injection)",
+          "CallableStatement for stored procedures",
+          "Connection pooling (HikariCP, c3p0)",
+          "Transaction management (commit, rollback, savepoints)",
+          "Batch updates",
+          "ResultSet types and concurrency",
+          "CLOB, BLOB handling",
+          "JDBC 4.x auto-loading drivers"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "advanced-java",
+    "section": "Advanced Java",
+    "icon": "🔧",
+    "color": "#8b5cf6",
+    "topics": [
+      {
+        "id": "servlets",
+        "title": "Servlets",
+        "subtopics": [
+          "Servlet lifecycle (init, service, destroy)",
+          "HttpServlet, doGet, doPost",
+          "ServletContext vs ServletConfig",
+          "HttpSession management",
+          "Cookies",
+          "Filters & Filter chains",
+          "Listeners (ServletContextListener, HttpSessionListener)",
+          "Request dispatching (forward vs redirect)",
+          "Async servlets (Servlet 3.0+)",
+          "Multipart file upload"
+        ]
+      },
+      {
+        "id": "jsp",
+        "title": "JSP",
+        "subtopics": [
+          "JSP lifecycle",
+          "Directives: page, include, taglib",
+          "Scriptlets, Expressions, Declarations",
+          "JSTL (core, fmt, sql, xml tags)",
+          "EL (Expression Language)",
+          "Custom tag libraries",
+          "JSP → Servlet compilation",
+          "MVC pattern with Servlets + JSP"
+        ]
+      },
+      {
+        "id": "tomcat",
+        "title": "Tomcat Internals",
+        "subtopics": [
+          "Tomcat architecture (Server, Service, Connector, Container)",
+          "Catalina engine",
+          "Host, Context, Wrapper hierarchy",
+          "Coyote HTTP connector",
+          "ClassLoader hierarchy in Tomcat",
+          "server.xml, web.xml, context.xml",
+          "Valve pipeline",
+          "JNDI resources in Tomcat",
+          "Tomcat clustering & session replication",
+          "Tuning thread pool (Executor)"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "java-evolution",
+    "section": "Java Evolution",
+    "icon": "🚀",
+    "color": "#10b981",
+    "topics": [
+      {
+        "id": "java8",
+        "title": "Java 8",
+        "subtopics": [
+          "Lambda expressions",
+          "Functional interfaces (Function, Predicate, Supplier, Consumer, BiFunction)",
+          "Method references (static, instance, constructor)",
+          "Stream API",
+          "Optional",
+          "Default & static methods in interfaces",
+          "New Date/Time API (LocalDate, LocalDateTime, ZonedDateTime, Duration, Period)",
+          "Nashorn JS engine",
+          "CompletableFuture",
+          "Base64 encoding built-in"
+        ]
+      },
+      {
+        "id": "java11",
+        "title": "Java 9–11",
+        "subtopics": [
+          "Java 9: Module System (JPMS) — problem it solved",
+          "Java 9: jshell REPL",
+          "Java 9: Collection factory methods (List.of, Map.of)",
+          "Java 9: Stream enhancements (takeWhile, dropWhile, iterate)",
+          "Java 10: var — local variable type inference",
+          "Java 10: Unmodifiable collection copies",
+          "Java 11: String methods (isBlank, lines, strip, repeat)",
+          "Java 11: Files.readString, writeString",
+          "Java 11: HTTP Client (async, HTTP/2)",
+          "Java 11: Running single-file programs"
+        ]
+      },
+      {
+        "id": "java17",
+        "title": "Java 12–17",
+        "subtopics": [
+          "Java 12: Switch expressions (preview)",
+          "Java 13: Text blocks (preview)",
+          "Java 14: Pattern matching for instanceof (preview)",
+          "Java 14: Records (preview)",
+          "Java 14: NullPointerException messages improvement",
+          "Java 15: Sealed classes (preview)",
+          "Java 16: Records & pattern matching (final)",
+          "Java 17: Sealed classes (final), Random enhancements",
+          "Java 17: Deprecations & removals (Security Manager)",
+          "Java 17 LTS significance"
+        ]
+      },
+      {
+        "id": "java21",
+        "title": "Java 18–21",
+        "subtopics": [
+          "Java 18: Simple Web Server",
+          "Java 19: Virtual Threads (preview)",
+          "Java 19: Structured Concurrency (preview)",
+          "Java 20: Scoped Values (preview)",
+          "Java 21: Virtual Threads (final) — how they differ from platform threads",
+          "Java 21: Structured Concurrency (preview)",
+          "Java 21: Sequenced Collections",
+          "Java 21: Pattern matching in switch (final)",
+          "Java 21: Record patterns",
+          "Java 21 LTS significance"
+        ]
+      },
+      {
+        "id": "java25",
+        "title": "Java 22–25",
+        "subtopics": [
+          "Java 22: Unnamed Variables & Patterns",
+          "Java 22: Stream Gatherers (preview)",
+          "Java 23: Primitive types in patterns (preview)",
+          "Java 24: Ahead-of-Time compilation class data sharing",
+          "Java 24: Quantum-resistant cryptography",
+          "Java 25: Stable Virtual Threads ecosystem",
+          "Java 25: Value Objects (preview — Valhalla)",
+          "Java 25 LTS significance",
+          "Project Valhalla: value types — motivation & tradeoffs",
+          "Project Panama: Foreign Function & Memory API"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dsa",
+    "section": "DSA",
+    "icon": "🧩",
+    "color": "#ef4444",
+    "topics": [
+      {
+        "id": "arrays-strings",
+        "title": "Arrays & Strings",
+        "subtopics": [
+          "Two pointers technique",
+          "Sliding window",
+          "Prefix sums",
+          "Kadane's algorithm",
+          "String manipulation (in-place, StringBuilder)",
+          "Sorting: QuickSort, MergeSort, HeapSort internals",
+          "Searching: Binary search variants",
+          "Matrix traversal patterns"
+        ]
+      },
+      {
+        "id": "linked-lists",
+        "title": "Linked Lists",
+        "subtopics": [
+          "Singly, Doubly, Circular",
+          "Fast & slow pointer (Floyd's cycle detection)",
+          "Reversal techniques",
+          "Merge sorted lists",
+          "LRU Cache implementation"
+        ]
+      },
+      {
+        "id": "stacks-queues",
+        "title": "Stacks & Queues",
+        "subtopics": [
+          "Monotonic stack pattern",
+          "Min/Max stack",
+          "Queue using two stacks",
+          "Deque patterns",
+          "BFS using queue"
+        ]
+      },
+      {
+        "id": "trees",
+        "title": "Trees & Heaps",
+        "subtopics": [
+          "Binary tree traversals (pre/in/post/level order)",
+          "BST: insertion, deletion, search, validation",
+          "AVL trees (concept + rotations)",
+          "Red-Black trees (concept)",
+          "Trie (prefix tree)",
+          "Segment tree",
+          "Fenwick tree (BIT)",
+          "Heap: min-heap, max-heap, heapify",
+          "K-way merge pattern"
+        ]
+      },
+      {
+        "id": "graphs",
+        "title": "Graphs",
+        "subtopics": [
+          "Representation: adjacency list vs matrix",
+          "DFS (recursive & iterative)",
+          "BFS",
+          "Topological sort (Kahn's + DFS)",
+          "Cycle detection (directed vs undirected)",
+          "Dijkstra's algorithm",
+          "Bellman-Ford",
+          "Floyd-Warshall",
+          "Minimum Spanning Tree: Prim's, Kruskal's",
+          "Union-Find (Disjoint Set Union)",
+          "Bipartite check",
+          "Strongly connected components (Tarjan, Kosaraju)"
+        ]
+      },
+      {
+        "id": "backtracking",
+        "title": "Backtracking",
+        "subtopics": [
+          "Backtracking template",
+          "Subsets, permutations, combinations",
+          "N-Queens",
+          "Sudoku solver",
+          "Word search",
+          "Pruning strategies"
+        ]
+      },
+      {
+        "id": "dp",
+        "title": "Dynamic Programming",
+        "subtopics": [
+          "Memoization vs Tabulation",
+          "1D DP: Fibonacci, climbing stairs, house robber",
+          "2D DP: Grid paths, edit distance, LCS",
+          "Knapsack variants (0/1, unbounded, fractional)",
+          "Interval DP",
+          "State machine DP",
+          "Bitmasking DP",
+          "DP on trees",
+          "DP on graphs"
+        ]
+      },
+      {
+        "id": "algorithms",
+        "title": "Core Algorithms",
+        "subtopics": [
+          "Divide & conquer paradigm",
+          "Greedy paradigm + correctness proofs",
+          "Bit manipulation tricks",
+          "Number theory (GCD, LCM, Sieve of Eratosthenes, modular arithmetic)",
+          "Fast exponentiation",
+          "Randomized algorithms (QuickSelect)",
+          "Time & space complexity analysis",
+          "Amortized analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "spring",
+    "section": "Spring Ecosystem",
+    "icon": "🌱",
+    "color": "#22c55e",
+    "topics": [
+      {
+        "id": "spring-core",
+        "title": "Spring Core & Boot",
+        "subtopics": [
+          "IoC container — why inversion of control",
+          "Dependency Injection types (constructor, setter, field)",
+          "ApplicationContext lifecycle",
+          "Bean lifecycle (@PostConstruct, @PreDestroy, InitializingBean)",
+          "Bean scopes (singleton, prototype, request, session)",
+          "Component scanning, @Configuration, @Bean",
+          "Conditional beans (@ConditionalOnProperty, @Profile)",
+          "Spring Boot auto-configuration internals",
+          "spring.factories / AutoConfiguration imports",
+          "SpringApplication startup sequence",
+          "Externalized configuration (application.yml, @ConfigurationProperties)",
+          "Actuator endpoints",
+          "Spring Boot DevTools"
+        ]
+      },
+      {
+        "id": "spring-aop",
+        "title": "Spring AOP",
+        "subtopics": [
+          "Cross-cutting concerns problem",
+          "Aspect, Advice, Pointcut, Join Point, Weaving",
+          "Types of advice (@Before, @After, @Around, @AfterReturning, @AfterThrowing)",
+          "Pointcut expressions",
+          "JDK dynamic proxy vs CGLIB proxy",
+          "AOP limitations (self-invocation problem)",
+          "Practical uses: logging, transactions, security, caching"
+        ]
+      },
+      {
+        "id": "spring-mvc",
+        "title": "Spring MVC",
+        "subtopics": [
+          "DispatcherServlet — front controller pattern",
+          "Request processing pipeline",
+          "@Controller vs @RestController",
+          "@RequestMapping, @GetMapping, @PostMapping",
+          "@PathVariable, @RequestParam, @RequestBody, @ResponseBody",
+          "HandlerInterceptor",
+          "Exception handling: @ExceptionHandler, @ControllerAdvice",
+          "Content negotiation",
+          "Validation: @Valid, BindingResult, Custom validators",
+          "MessageConverters (Jackson, XML)",
+          "Async MVC (DeferredResult, Callable)"
+        ]
+      },
+      {
+        "id": "spring-data",
+        "title": "Spring Data",
+        "subtopics": [
+          "Repository pattern: CrudRepository, JpaRepository, PagingAndSortingRepository",
+          "Query derivation from method names",
+          "@Query (JPQL & native)",
+          "JPA: Entity, @Id, @GeneratedValue, @Column",
+          "Relationships: @OneToOne, @OneToMany, @ManyToMany",
+          "Lazy vs Eager loading + N+1 problem",
+          "Entity lifecycle (transient, managed, detached, removed)",
+          "Transactions: @Transactional, propagation levels, isolation levels",
+          "Optimistic vs Pessimistic locking",
+          "Projections (interface, class, dynamic)",
+          "Specifications (dynamic queries)",
+          "Spring Data MongoDB",
+          "Spring Data Redis",
+          "Auditing (@CreatedDate, @LastModifiedDate)"
+        ]
+      },
+      {
+        "id": "spring-security",
+        "title": "Spring Security",
+        "subtopics": [
+          "Authentication vs Authorization",
+          "Security filter chain",
+          "SecurityContext & SecurityContextHolder",
+          "UserDetailsService, UserDetails, PasswordEncoder",
+          "Form login, HTTP Basic, OAuth2",
+          "JWT — stateless auth flow",
+          "OAuth2 Resource Server",
+          "Method security (@PreAuthorize, @PostAuthorize)",
+          "CSRF protection",
+          "CORS configuration",
+          "Role vs Authority",
+          "Custom AuthenticationProvider",
+          "Session management"
+        ]
+      },
+      {
+        "id": "spring-webflux",
+        "title": "Spring WebFlux",
+        "subtopics": [
+          "Reactive programming paradigm — why reactive",
+          "Reactor: Mono, Flux",
+          "Backpressure",
+          "Schedulers",
+          "Functional endpoints (RouterFunction, HandlerFunction)",
+          "WebClient (non-blocking HTTP client)",
+          "R2DBC (reactive relational DB)",
+          "Error handling in reactive streams",
+          "WebFlux vs MVC tradeoffs",
+          "Server-Sent Events, WebSocket with WebFlux"
+        ]
+      },
+      {
+        "id": "spring-cloud",
+        "title": "Spring Cloud",
+        "subtopics": [
+          "Service discovery: Eureka, Consul",
+          "Client-side load balancing: Spring Cloud LoadBalancer",
+          "API Gateway: Spring Cloud Gateway",
+          "Config Server (centralized configuration)",
+          "Circuit breaker: Resilience4j integration",
+          "Distributed tracing: Sleuth + Zipkin / Micrometer Tracing",
+          "Spring Cloud OpenFeign (declarative HTTP client)",
+          "Spring Cloud Contract (consumer-driven contracts)"
+        ]
+      },
+      {
+        "id": "spring-testing",
+        "title": "Spring MVC Testing",
+        "subtopics": [
+          "Unit vs Integration vs End-to-End tests",
+          "MockMvc setup (standaloneSetup vs webAppContextSetup)",
+          "perform(), andExpect(), andDo()",
+          "@WebMvcTest slice",
+          "@SpringBootTest + TestRestTemplate",
+          "MockBean vs SpyBean",
+          "@DataJpaTest slice",
+          "Testcontainers for real DB",
+          "WireMock for external HTTP",
+          "Testing Security"
+        ]
+      },
+      {
+        "id": "spring-ai",
+        "title": "Spring AI",
+        "subtopics": [
+          "ChatClient, ChatModel abstraction",
+          "Prompt templates",
+          "Output parsers (BeanOutputParser, structured output)",
+          "Embedding models",
+          "Vector stores (pgvector, Redis, Chroma)",
+          "RAG (Retrieval Augmented Generation) pattern",
+          "Tool/Function calling",
+          "Advisors (conversation memory, logging)",
+          "Multi-modality (image input)",
+          "Observability with Micrometer"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "backend-arch",
+    "section": "Backend & Architecture",
+    "icon": "🏗️",
+    "color": "#06b6d4",
+    "topics": [
+      {
+        "id": "rest-api",
+        "title": "REST API Design",
+        "subtopics": [
+          "REST constraints (stateless, uniform interface, layered, cacheable)",
+          "Resource naming conventions",
+          "HTTP methods semantics (GET, POST, PUT, PATCH, DELETE)",
+          "HTTP status codes — when to use each",
+          "HATEOAS",
+          "Versioning strategies (URL, header, media type)",
+          "Pagination (offset vs cursor-based)",
+          "Filtering, sorting, searching patterns",
+          "Rate limiting",
+          "API documentation with OpenAPI / Swagger",
+          "Idempotency keys"
+        ]
+      },
+      {
+        "id": "graphql",
+        "title": "GraphQL",
+        "subtopics": [
+          "GraphQL vs REST tradeoffs",
+          "Schema definition (types, queries, mutations, subscriptions)",
+          "Resolvers",
+          "N+1 problem in GraphQL + DataLoader solution",
+          "Spring for GraphQL",
+          "Authentication in GraphQL",
+          "Pagination in GraphQL (cursor-based)",
+          "Schema stitching vs federation",
+          "Persisted queries"
+        ]
+      },
+      {
+        "id": "microservices",
+        "title": "Microservices",
+        "subtopics": [
+          "Monolith vs Microservices tradeoffs",
+          "Domain-Driven Design (Bounded contexts, Aggregates)",
+          "Service decomposition strategies",
+          "Inter-service communication: sync vs async",
+          "API Gateway pattern",
+          "Service discovery",
+          "Circuit breaker pattern",
+          "Saga pattern (choreography vs orchestration)",
+          "CQRS (Command Query Responsibility Segregation)",
+          "Event sourcing",
+          "Distributed transactions",
+          "Data consistency patterns",
+          "Strangler fig migration pattern",
+          "12-factor app methodology"
+        ]
+      },
+      {
+        "id": "kafka",
+        "title": "Kafka",
+        "subtopics": [
+          "Kafka architecture (brokers, topics, partitions, offsets)",
+          "Producers: acknowledgment modes (acks=0, 1, all)",
+          "Consumers: consumer groups, partition assignment",
+          "Consumer lag",
+          "At-most-once, at-least-once, exactly-once semantics",
+          "Idempotent producer",
+          "Kafka transactions",
+          "Kafka Streams",
+          "Kafka Connect",
+          "Schema Registry & Avro",
+          "Compacted topics",
+          "Retention policies",
+          "Replication factor & ISR",
+          "Kafka vs RabbitMQ tradeoffs"
+        ]
+      },
+      {
+        "id": "rabbitmq",
+        "title": "RabbitMQ & Message Brokers",
+        "subtopics": [
+          "AMQP model: exchanges, queues, bindings",
+          "Exchange types: direct, fanout, topic, headers",
+          "Message acknowledgment modes",
+          "Dead letter exchanges (DLX)",
+          "Message TTL & queue TTL",
+          "Publisher confirms",
+          "Persistent messages",
+          "Prefetch count & QoS",
+          "RabbitMQ clustering",
+          "RabbitMQ vs Kafka use cases",
+          "Message broker patterns: work queues, pub/sub, routing, RPC"
+        ]
+      },
+      {
+        "id": "hld",
+        "title": "HLD — High Level Design",
+        "subtopics": [
+          "Estimation: RPS, storage, bandwidth calculations",
+          "Load balancing algorithms (round-robin, least connections, IP hash, weighted)",
+          "Caching strategies (cache-aside, write-through, write-behind, read-through)",
+          "CDN — push vs pull",
+          "Database sharding strategies (horizontal, vertical, range, hash, directory)",
+          "Replication (master-slave, multi-master)",
+          "CAP theorem",
+          "PACELC theorem",
+          "Consistent hashing",
+          "Rate limiting algorithms (token bucket, leaky bucket, sliding window)",
+          "Designing: URL shortener, Twitter feed, Chat app, Uber, YouTube"
+        ]
+      },
+      {
+        "id": "lld",
+        "title": "LLD — Low Level Design",
+        "subtopics": [
+          "SOLID principles",
+          "Design patterns: Creational (Singleton, Factory, Builder, Prototype, Abstract Factory)",
+          "Design patterns: Structural (Adapter, Bridge, Composite, Decorator, Facade, Proxy, Flyweight)",
+          "Design patterns: Behavioral (Observer, Strategy, Command, Iterator, Mediator, State, Template Method, Chain of Responsibility)",
+          "Designing: Parking lot, Library management, Chess, Elevator, Movie booking",
+          "UML: Class diagrams, Sequence diagrams"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "databases",
+    "section": "Databases",
+    "icon": "🗄️",
+    "color": "#f97316",
+    "topics": [
+      {
+        "id": "sql-fundamentals",
+        "title": "SQL Fundamentals",
+        "subtopics": [
+          "DDL, DML, DCL, TCL commands",
+          "JOINs (INNER, LEFT, RIGHT, FULL, CROSS, SELF)",
+          "Subqueries vs JOINs tradeoffs",
+          "Window functions (ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, PARTITION BY)",
+          "CTEs (WITH clause)",
+          "Stored procedures, functions, triggers",
+          "Views & materialized views",
+          "Indexes: B-tree, Hash, Bitmap, Composite, Partial, Covering",
+          "EXPLAIN / EXPLAIN ANALYZE",
+          "Query optimization techniques",
+          "ACID properties",
+          "Isolation levels (READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE)",
+          "Dirty read, non-repeatable read, phantom read"
+        ]
+      },
+      {
+        "id": "postgresql",
+        "title": "PostgreSQL",
+        "subtopics": [
+          "PostgreSQL architecture (postmaster, backends, WAL)",
+          "MVCC (Multi-Version Concurrency Control)",
+          "WAL (Write-Ahead Logging)",
+          "Vacuum & autovacuum",
+          "Table partitioning",
+          "JSONB vs JSON",
+          "Full-text search",
+          "Logical replication",
+          "PostgreSQL-specific data types (arrays, hstore, uuid, inet)",
+          "pg_stat_* views for monitoring",
+          "Connection pooling with PgBouncer"
+        ]
+      },
+      {
+        "id": "mysql-mssql",
+        "title": "MySQL & MSSQL",
+        "subtopics": [
+          "MySQL: InnoDB vs MyISAM storage engines",
+          "MySQL: binary log (binlog) for replication",
+          "MySQL: row vs statement vs mixed binlog format",
+          "MySQL: Group Replication vs InnoDB Cluster",
+          "MSSQL: Always On Availability Groups",
+          "MSSQL: Clustered vs non-clustered indexes",
+          "MSSQL: columnstore indexes",
+          "MSSQL: Query Store",
+          "MSSQL: Execution plan caching",
+          "MySQL vs PostgreSQL vs MSSQL tradeoffs"
+        ]
+      },
+      {
+        "id": "mongodb",
+        "title": "MongoDB",
+        "subtopics": [
+          "Document model vs relational model tradeoffs",
+          "BSON types",
+          "Collections, documents, embedded documents",
+          "Indexing: single field, compound, multikey, text, geospatial",
+          "Aggregation pipeline ($match, $group, $project, $lookup, $unwind)",
+          "Schema design: embedding vs referencing",
+          "Transactions (multi-document)",
+          "Read concerns & write concerns",
+          "Replica sets",
+          "Sharding (range-based, hash-based, zone sharding)",
+          "Change streams",
+          "Atlas Search"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cloud-devops",
+    "section": "Cloud & DevOps",
+    "icon": "☁️",
+    "color": "#3b82f6",
+    "topics": [
+      {
+        "id": "aws",
+        "title": "AWS",
+        "subtopics": [
+          "IAM (users, roles, policies, trust relationships)",
+          "VPC (subnets, route tables, security groups, NACLs, peering, Transit Gateway)",
+          "EC2 (instance types, AMIs, auto-scaling groups, launch templates)",
+          "S3 (storage classes, lifecycle policies, versioning, replication, presigned URLs)",
+          "RDS (Multi-AZ, read replicas, parameter groups)",
+          "ElastiCache (Redis vs Memcached on AWS)",
+          "EKS, ECS, Fargate",
+          "Lambda (cold start, concurrency, layers, event sources)",
+          "SQS, SNS, EventBridge",
+          "MSK (Managed Kafka)",
+          "CloudWatch, CloudTrail, X-Ray",
+          "API Gateway",
+          "Route 53",
+          "CloudFront",
+          "Secrets Manager vs Parameter Store"
+        ]
+      },
+      {
+        "id": "azure",
+        "title": "Azure",
+        "subtopics": [
+          "Azure AD (Entra ID) — authentication & RBAC",
+          "Azure Virtual Network, NSG, peering",
+          "Azure VMs, Scale Sets, Availability Zones",
+          "Azure Blob Storage, Data Lake",
+          "Azure SQL, Cosmos DB",
+          "Azure Kubernetes Service (AKS)",
+          "Azure Functions (serverless)",
+          "Azure Service Bus, Event Hub, Event Grid",
+          "Azure Monitor, Application Insights",
+          "Azure DevOps Pipelines",
+          "Azure Key Vault"
+        ]
+      },
+      {
+        "id": "gcp",
+        "title": "GCP",
+        "subtopics": [
+          "GCP IAM & service accounts",
+          "GCE, GKE",
+          "Cloud Storage",
+          "Cloud SQL, Spanner, Bigtable, Firestore",
+          "Pub/Sub",
+          "Cloud Functions, Cloud Run",
+          "BigQuery",
+          "Cloud Monitoring, Cloud Logging",
+          "Anthos (multi-cloud Kubernetes)"
+        ]
+      },
+      {
+        "id": "kubernetes",
+        "title": "Kubernetes",
+        "subtopics": [
+          "Control plane: API Server, etcd, Scheduler, Controller Manager",
+          "Worker node: kubelet, kube-proxy, container runtime",
+          "Pod lifecycle",
+          "Deployments, ReplicaSets, StatefulSets, DaemonSets",
+          "Services (ClusterIP, NodePort, LoadBalancer, ExternalName)",
+          "Ingress & Ingress controllers (Nginx, Traefik)",
+          "ConfigMaps & Secrets",
+          "PersistentVolumes, PersistentVolumeClaims, StorageClasses",
+          "Resource requests & limits (CPU, memory)",
+          "Horizontal Pod Autoscaler, Vertical Pod Autoscaler, KEDA",
+          "Namespaces & RBAC",
+          "Network policies",
+          "Helm charts",
+          "Health checks: liveness, readiness, startup probes",
+          "Rolling updates, canary deployments, blue-green deployments",
+          "Service mesh: Istio (concept)"
+        ]
+      },
+      {
+        "id": "podman",
+        "title": "Podman & Containers",
+        "subtopics": [
+          "Containers vs VMs",
+          "OCI image spec",
+          "Dockerfile best practices (layer caching, multi-stage builds, distroless)",
+          "Podman vs Docker differences (daemon-less, rootless)",
+          "Podman pods",
+          "Buildah for image building",
+          "Skopeo for image inspection",
+          "Container networking (bridge, host, none, overlay)",
+          "Container security (seccomp, AppArmor, capabilities)",
+          "Image scanning (Trivy, Grype)"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "production",
+    "section": "Production Engineering",
+    "icon": "🔥",
+    "color": "#dc2626",
+    "topics": [
+      {
+        "id": "distributed-systems",
+        "title": "Distributed Systems",
+        "subtopics": [
+          "Fallacies of distributed computing",
+          "Network partitions & handling",
+          "Clock synchronization (physical vs logical vs vector clocks)",
+          "Consensus algorithms (Raft, Paxos concepts)",
+          "Leader election",
+          "Distributed locking (Redis Redlock, ZooKeeper)",
+          "Distributed caching strategies",
+          "Eventual consistency patterns",
+          "Two-phase commit (2PC) & its failure modes",
+          "Idempotency in distributed systems",
+          "Outbox pattern for reliable event publishing",
+          "Saga orchestration vs choreography"
+        ]
+      },
+      {
+        "id": "observability",
+        "title": "Observability",
+        "subtopics": [
+          "The three pillars: Logs, Metrics, Traces",
+          "Structured logging (JSON logs, MDC in Java)",
+          "Log levels strategy (when to use DEBUG vs INFO vs WARN vs ERROR)",
+          "Metrics: counters, gauges, histograms, summaries",
+          "Micrometer + Prometheus + Grafana",
+          "Distributed tracing: OpenTelemetry",
+          "Jaeger / Zipkin setup",
+          "SLI, SLO, SLA definitions",
+          "Error budgets",
+          "Alerting strategies (avoid alert fatigue)",
+          "Correlation IDs in logs",
+          "Centralized logging: ELK Stack / Loki"
+        ]
+      },
+      {
+        "id": "production-errors",
+        "title": "Production Errors & Debugging",
+        "subtopics": [
+          "OutOfMemoryError — heap vs metaspace vs native",
+          "StackOverflowError",
+          "Deadlock detection from thread dumps",
+          "High CPU — identifying hot threads",
+          "High memory — heap dump analysis",
+          "Slow queries — identifying & fixing",
+          "Connection pool exhaustion",
+          "Cascading failures & bulkhead pattern",
+          "Circuit breaker states & tuning",
+          "GC pauses causing latency spikes",
+          "ClassNotFoundException vs NoClassDefFoundError",
+          "NoSuchMethodError — classpath conflicts",
+          "ConcurrentModificationException",
+          "TimeoutException in distributed calls",
+          "Incident response process (detection, triage, mitigation, RCA)"
+        ]
+      }
+    ]
+  }
+]
