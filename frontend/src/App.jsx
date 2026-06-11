@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { 
   BookOpen, Award, CheckCircle, HelpCircle, LogOut, Video, 
   Send, Loader, ArrowRight, Play, ExternalLink, Flame, 
@@ -44,15 +44,29 @@ const getLocalYMD = (dateInput) => {
 // ==========================================================================
 // DYNAMIC STREAK CALCULATIONS
 // ==========================================================================
-const calculateStreaks = (userJournals) => {
-  if (!userJournals || userJournals.length === 0) {
-    return { daily: 0, weekly: 0, monthly: 0, yearly: 0, activeStreakDates: new Set() };
+const calculateStreaks = (userJournals, roadmapData) => {
+  const datesSet = new Set();
+
+  // 1. Extract unique dates from verified userJournals
+  if (userJournals && userJournals.length > 0) {
+    userJournals.forEach(j => {
+      if (j.isVerified) {
+        const ymd = getLocalYMD(j.createdAt);
+        if (ymd) datesSet.add(ymd);
+      }
+    });
   }
 
-  // Extract unique dates formatted as YYYY-MM-DD
-  const dates = Array.from(new Set(
-    userJournals.map(j => getLocalYMD(j.createdAt))
-  )).filter(Boolean).sort((a, b) => new Date(b) - new Date(a)); // descending (newest first)
+  // 2. Extract unique dates from roadmapStudyDates
+  if (roadmapData && roadmapData.roadmapStudyDates) {
+    Object.keys(roadmapData.roadmapStudyDates).forEach(dateStr => {
+      if (roadmapData.roadmapStudyDates[dateStr] && roadmapData.roadmapStudyDates[dateStr].length > 0) {
+        datesSet.add(dateStr);
+      }
+    });
+  }
+
+  const dates = Array.from(datesSet).filter(Boolean).sort((a, b) => new Date(b) - new Date(a));
 
   if (dates.length === 0) {
     return { daily: 0, weekly: 0, monthly: 0, yearly: 0, activeStreakDates: new Set() };
@@ -98,9 +112,11 @@ const calculateStreaks = (userJournals) => {
   };
 
   // 2. Weekly Streak
-  const weeks = Array.from(new Set(
-    userJournals.map(j => getWeekId(safeParseDate(j.createdAt)))
-  )).sort((a, b) => b.localeCompare(a));
+  const weeksSet = new Set();
+  dates.forEach(dateStr => {
+    weeksSet.add(getWeekId(new Date(dateStr)));
+  });
+  const weeks = Array.from(weeksSet).sort((a, b) => b.localeCompare(a));
 
   let weekly = 0;
   const currentWeek = getWeekId(new Date());
@@ -133,12 +149,12 @@ const calculateStreaks = (userJournals) => {
   }
 
   // 3. Monthly Streak
-  const months = Array.from(new Set(
-    userJournals.map(j => {
-      const d = safeParseDate(j.createdAt);
-      return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : '';
-    }).filter(Boolean)
-  )).sort((a, b) => b.localeCompare(a));
+  const monthsSet = new Set();
+  dates.forEach(dateStr => {
+    const d = new Date(dateStr);
+    monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  });
+  const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
 
   let monthly = 0;
   const now = new Date();
@@ -169,12 +185,12 @@ const calculateStreaks = (userJournals) => {
   }
 
   // 4. Yearly Streak
-  const years = Array.from(new Set(
-    userJournals.map(j => {
-      const d = safeParseDate(j.createdAt);
-      return d ? d.getFullYear().toString() : '';
-    }).filter(Boolean)
-  )).sort((a, b) => Number(b) - Number(a));
+  const yearsSet = new Set();
+  dates.forEach(dateStr => {
+    const d = new Date(dateStr);
+    yearsSet.add(d.getFullYear().toString());
+  });
+  const years = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
 
   let yearly = 0;
   const currentYear = new Date().getFullYear().toString();
@@ -202,34 +218,52 @@ const calculateStreaks = (userJournals) => {
 // ==========================================================================
 // TOPIC & CATEGORY STATISTICS HELPER
 // ==========================================================================
-const getCategoryStats = (journals) => {
+const getCategoryStats = (journals, roadmapData) => {
   let totalTopics = 0;
   let techCount = 0;
   let growthCount = 0;
   const techTopics = new Set();
   const growthTopics = new Set();
 
-  journals.forEach(j => {
-    if (j.isVerified) {
-      totalTopics++;
-      const concepts = j.aiAnalysis?.identifiedConcepts || [];
-      const notes = (j.userNotes || "").toLowerCase();
+  if (journals) {
+    journals.forEach(j => {
+      if (j.isVerified) {
+        totalTopics++;
+        const concepts = j.aiAnalysis?.identifiedConcepts || [];
+        const notes = (j.userNotes || "").toLowerCase();
 
-      const isGrowth = concepts.some(c => 
-        ["Personal Productivity", "Habit Architecture", "The 2-Minute Rule", "Time Management", "Habit Stacking", "Cognitive Focus"].includes(c)
-      ) || notes.includes("habit") || notes.includes("productivity") || notes.includes("focus") || notes.includes("mindset");
+        const isGrowth = concepts.some(c => 
+          ["Personal Productivity", "Habit Architecture", "The 2-Minute Rule", "Time Management", "Habit Stacking", "Cognitive Focus"].includes(c)
+        ) || notes.includes("habit") || notes.includes("productivity") || notes.includes("focus") || notes.includes("mindset");
 
-      const topicName = j.aiAnalysis?.identifiedConcepts?.[0] || "System Design";
+        const topicName = j.aiAnalysis?.identifiedConcepts?.[0] || "System Design";
 
-      if (isGrowth) {
-        growthCount++;
-        growthTopics.add(topicName);
-      } else {
-        techCount++;
-        techTopics.add(topicName);
+        if (isGrowth) {
+          growthCount++;
+          growthTopics.add(topicName);
+        } else {
+          techCount++;
+          techTopics.add(topicName);
+        }
       }
-    }
-  });
+    });
+  }
+
+  if (roadmapData) {
+    Object.keys(roadmapData).forEach(key => {
+      if (key.startsWith("status_") && roadmapData[key] === "done") {
+        const topicId = key.substring("status_".length);
+        totalTopics++;
+        techCount++;
+
+        let resolvedTitle = topicId.split('_sub_')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (topicId.includes('_sub_')) {
+          resolvedTitle += ` (Subtopic ${Number(topicId.split('_sub_')[1]) + 1})`;
+        }
+        techTopics.add(resolvedTitle);
+      }
+    });
+  }
 
   return {
     total: totalTopics,
@@ -247,14 +281,24 @@ const getCategoryStats = (journals) => {
 // ==========================================================================
 // GITHUB-STYLE CONTRIBUTION HEATMAP COMPONENT
 // ==========================================================================
-function ContributionHeatmap({ journals }) {
+function ContributionHeatmap({ journals, roadmapData }) {
   const activityMap = {};
-  journals.forEach(j => {
-    if (j.createdAt) {
-      const dStr = getLocalYMD(j.createdAt);
-      activityMap[dStr] = (activityMap[dStr] || 0) + 1;
-    }
-  });
+  if (journals) {
+    journals.forEach(j => {
+      if (j.createdAt) {
+        const dStr = getLocalYMD(j.createdAt);
+        activityMap[dStr] = (activityMap[dStr] || 0) + 1;
+      }
+    });
+  }
+
+  if (roadmapData && roadmapData.roadmapStudyDates) {
+    Object.keys(roadmapData.roadmapStudyDates).forEach(dStr => {
+      if (roadmapData.roadmapStudyDates[dStr] && roadmapData.roadmapStudyDates[dStr].length > 0) {
+        activityMap[dStr] = (activityMap[dStr] || 0) + 1;
+      }
+    });
+  }
 
   const today = new Date();
   const cells = [];
@@ -406,6 +450,11 @@ function App() {
   const [regEmail, setRegEmail] = useState('')
   const [followingRoadmap, setFollowingRoadmap] = useState(() => localStorage.getItem('gyanyatra_follow_roadmap') === 'true')
   const [currentView, setCurrentView] = useState('dashboard')
+  const [roadmapData, setRoadmapData] = useState({})
+
+  const handleRoadmapUpdate = useCallback((newData) => {
+    setRoadmapData(newData)
+  }, [])
   
   // OTP Auth States
   const [otpSent, setOtpSent] = useState(false)
@@ -495,8 +544,8 @@ function App() {
   const pollingRef = useRef(null)
 
   // Compute live streaks & category stats
-  const streaks = useMemo(() => calculateStreaks(journals), [journals])
-  const categoryStats = useMemo(() => getCategoryStats(journals), [journals])
+  const streaks = useMemo(() => calculateStreaks(journals, roadmapData), [journals, roadmapData])
+  const categoryStats = useMemo(() => getCategoryStats(journals, roadmapData), [journals, roadmapData])
 
   // Load user from LocalStorage on mount
   useEffect(() => {
@@ -558,6 +607,7 @@ function App() {
         // Maintain token in state/storage
         const updatedUser = { ...data, token: token }
         setUser(updatedUser)
+        setRoadmapData(data.roadmapData || {})
         
         // Load portfolio edit states
         setEditName(data.name || '')
@@ -570,6 +620,7 @@ function App() {
       } else {
         localStorage.removeItem('gyanyatra_user')
         setUser(null)
+        setRoadmapData({})
       }
     } catch (e) {
       console.error("Error fetching user profile:", e)
@@ -708,6 +759,7 @@ function App() {
       if (res.ok) {
         const data = await res.json() // Contains User object + JWT in token field
         setUser(data)
+        setRoadmapData(data.roadmapData || {})
         setEditName(data.name || '')
         setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
         setEditSkills(data.additionalSkills || [])
@@ -759,6 +811,7 @@ function App() {
         const data = await res.json()
         const updatedUser = { ...data, token: user.token }
         setUser(updatedUser)
+        setRoadmapData(updatedUser.roadmapData || {})
         localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
         setIsEditingPortfolio(false)
         setSuccessMsg("Portfolio profile saved successfully!")
@@ -1269,6 +1322,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('gyanyatra_user')
     setUser(null)
+    setRoadmapData({})
     setJournals([])
     setVideoUrl('')
     setUserNotes('')
@@ -1700,7 +1754,7 @@ function App() {
               ← Back to Main Dashboard
             </button>
           </div>
-          <Tracker user={user} />
+          <Tracker user={user} onRoadmapUpdate={handleRoadmapUpdate} />
         </div>
       ) : (
         <div className="dashboard-grid">
@@ -1982,7 +2036,7 @@ function App() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                     Activity Heatwave (Last 365 Days):
                   </div>
-                  <ContributionHeatmap journals={journals} />
+                  <ContributionHeatmap journals={journals} roadmapData={roadmapData} />
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>
@@ -2485,7 +2539,7 @@ function App() {
                   {/* Contribution Heatwave Map */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 className="insight-section-title">Seeker's Contribution Calendar</h3>
-                    <ContributionHeatmap journals={selectedUserJournals} />
+                    <ContributionHeatmap journals={selectedUserJournals} roadmapData={selectedUser ? selectedUser.roadmapData : null} />
                   </div>
 
                   {/* Grasped Concepts */}

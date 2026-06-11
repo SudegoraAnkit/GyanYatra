@@ -1,6 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import CURRICULUM from "./curriculum.json";
 
+const safeParseDate = (dateInput) => {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) return dateInput;
+  if (Array.isArray(dateInput)) {
+    const [year, month, day, hour = 0, minute = 0, second = 0] = dateInput;
+    return new Date(year, month - 1, day, hour, minute, second);
+  }
+  const d = new Date(dateInput);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const getLocalYMD = (dateInput) => {
+  const d = safeParseDate(dateInput);
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const STATUS_CYCLE = ["not-started", "in-progress", "done", "needs-revision"];
 const STATUS_CONFIG = {
   "not-started": { label: "Not Started", color: "#374151", bg: "#1f2937", icon: "○" },
@@ -185,8 +205,14 @@ function useStorage(user) {
   return { data, save, loaded };
 }
 
-export default function Tracker({ user }) {
+export default function Tracker({ user, onRoadmapUpdate }) {
   const { data, save, loaded } = useStorage(user);
+
+  useEffect(() => {
+    if (loaded && onRoadmapUpdate) {
+      onRoadmapUpdate(data);
+    }
+  }, [data, loaded, onRoadmapUpdate]);
   const [activeSection, setActiveSection] = useState(null);
   const [expandedTopic, setExpandedTopic] = useState(null);
   const [timerTopicId, setTimerTopicId] = useState(null);
@@ -210,7 +236,36 @@ export default function Tracker({ user }) {
   const cycleStatus = (id) => {
     const cur = getStatus(id);
     const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
-    save({ ...data, [`status_${id}`]: next });
+    
+    const todayStr = getLocalYMD(new Date());
+    let currentStudyDates = { ...(data.roadmapStudyDates || {}) };
+    
+    // Check if the user has studied this topic/subtopic
+    const timeSpent = getTime(id) + (timerTopicId === id ? timerSeconds : 0);
+    
+    // Only increment streak (add to today's study dates) if they set it to done/in-progress AND spent time studying it
+    if ((next === "done" || next === "in-progress") && timeSpent > 0) {
+      if (!currentStudyDates[todayStr]) {
+        currentStudyDates[todayStr] = [];
+      }
+      if (!currentStudyDates[todayStr].includes(id)) {
+        currentStudyDates[todayStr].push(id);
+      }
+    } else {
+      // If changing back to not-started/needs-revision, or if no time spent, remove it
+      if (currentStudyDates[todayStr]) {
+        currentStudyDates[todayStr] = currentStudyDates[todayStr].filter(x => x !== id);
+        if (currentStudyDates[todayStr].length === 0) {
+          delete currentStudyDates[todayStr];
+        }
+      }
+    }
+    
+    save({ 
+      ...data, 
+      [`status_${id}`]: next,
+      roadmapStudyDates: currentStudyDates
+    });
   };
 
   const startTimer = (id) => {
