@@ -61,6 +61,9 @@ public class UserController {
                     if (updatedUser.getAdditionalSkills() != null) {
                         user.setAdditionalSkills(updatedUser.getAdditionalSkills());
                     }
+                    if (updatedUser.getAcharyaPersona() != null) {
+                        user.setAcharyaPersona(updatedUser.getAcharyaPersona());
+                    }
                     user.setUpdatedAt(LocalDateTime.now());
                     return ResponseEntity.ok(userRepository.save(user));
                 })
