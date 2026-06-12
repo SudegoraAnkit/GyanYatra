@@ -22,6 +22,7 @@ public class User{
     private String bio;
     private java.util.List<String> additionalSkills;
     private java.util.Map<String, Object> roadmapData;
+    private String acharyaPersona; // "dronacharya", "patanjali", "vivekananda", "chanakya"
 
     @org.springframework.data.annotation.Transient
     private String token;

@@ -7,4 +7,5 @@ public record AcharyaAnalysis(
         List<String> identifiedConcepts,
         List<String> gapSuggestions,
         Integer score,
-        List<String> relevantTrials) {}
+        List<String> relevantTrials,
+        List<String> recallQuestions) {}

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import './index.css'
 import Tracker from './Tracker'
+import YatraDesigner from './YatraDesigner'
+import YatraTracker from './YatraTracker'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
 
@@ -440,6 +442,40 @@ function SurfingLoader({ message }) {
   )
 }
 
+const mergeRoadmapData = (local, remote) => {
+  const merged = { ...local };
+  const statusPrecedence = {
+    "done": 3,
+    "needs-revision": 2,
+    "in-progress": 1,
+    "not-started": 0
+  };
+
+  Object.keys(remote).forEach(key => {
+    if (key.startsWith("status_")) {
+      const localVal = local[key] || "not-started";
+      const remoteVal = remote[key] || "not-started";
+      const localWeight = statusPrecedence[localVal] ?? 0;
+      const remoteWeight = statusPrecedence[remoteVal] ?? 0;
+      if (remoteWeight > localWeight) {
+        merged[key] = remoteVal;
+      } else {
+        merged[key] = localVal;
+      }
+    } else if (key.startsWith("time_")) {
+      const localVal = Number(local[key]) || 0;
+      const remoteVal = Number(remote[key]) || 0;
+      merged[key] = Math.max(localVal, remoteVal);
+    } else {
+      if (local[key] === undefined) {
+        merged[key] = remote[key];
+      }
+    }
+  });
+
+  return merged;
+};
+
 // ==========================================================================
 // MAIN REACT COMPONENT
 // ==========================================================================
@@ -450,11 +486,29 @@ function App() {
   const [regEmail, setRegEmail] = useState('')
   const [followingRoadmap, setFollowingRoadmap] = useState(() => localStorage.getItem('gyanyatra_follow_roadmap') === 'true')
   const [currentView, setCurrentView] = useState('dashboard')
-  const [roadmapData, setRoadmapData] = useState({})
+  const [roadmapData, setRoadmapData] = useState(() => {
+    try {
+      const local = localStorage.getItem("tracker-data");
+      return local ? JSON.parse(local) : {};
+    } catch (e) {
+      return {};
+    }
+  });
 
   const handleRoadmapUpdate = useCallback((newData) => {
     setRoadmapData(newData)
   }, [])
+
+  const loadAndMergeRoadmap = useCallback((remoteRoadmap) => {
+    let localRoadmap = {};
+    try {
+      const local = localStorage.getItem("tracker-data");
+      if (local) localRoadmap = JSON.parse(local);
+    } catch (e) {}
+    const merged = mergeRoadmapData(localRoadmap, remoteRoadmap || {});
+    setRoadmapData(merged);
+    localStorage.setItem("tracker-data", JSON.stringify(merged));
+  }, []);
   
   // OTP Auth States
   const [otpSent, setOtpSent] = useState(false)
@@ -470,6 +524,13 @@ function App() {
   
   // Portfolio Customize states
   const [isEditingPortfolio, setIsEditingPortfolio] = useState(false)
+  const [editPersona, setEditPersona] = useState('dronacharya')
+  const [myYatras, setMyYatras] = useState([])
+  const [publicYatras, setPublicYatras] = useState([])
+  const [selectedYatra, setSelectedYatra] = useState(null)
+  const [selectedYatraMode, setSelectedYatraMode] = useState('gallery')
+  const [weeklyGoalMinutes, setWeeklyGoalMinutes] = useState(300)
+  const [loadingYatras, setLoadingYatras] = useState(false)
   const [editName, setEditName] = useState('')
   const [editBio, setEditBio] = useState('')
   const [editSkills, setEditSkills] = useState([])
@@ -607,12 +668,13 @@ function App() {
         // Maintain token in state/storage
         const updatedUser = { ...data, token: token }
         setUser(updatedUser)
-        setRoadmapData(data.roadmapData || {})
+        loadAndMergeRoadmap(data.roadmapData)
         
         // Load portfolio edit states
         setEditName(data.name || '')
         setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
         setEditSkills(data.additionalSkills || [])
+        setEditPersona(data.acharyaPersona || 'dronacharya')
         
         localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
         fetchSeekerJournals(userId, token)
@@ -626,6 +688,131 @@ function App() {
       console.error("Error fetching user profile:", e)
     }
   }
+
+  // Yatras / Lakshyas Handlers
+  const fetchYatras = useCallback(async () => {
+    if (!user || !user.id || !user.token) return;
+    setLoadingYatras(true);
+    try {
+      const resMy = await fetch(`${API_BASE}/yatras/my`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (resMy.ok) {
+        const data = await resMy.json();
+        setMyYatras(data);
+      }
+
+      const resPub = await fetch(`${API_BASE}/yatras/public`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (resPub.ok) {
+        const data = await resPub.json();
+        setPublicYatras(data);
+      }
+    } catch (e) {
+      console.error("Failed to load Yatras:", e);
+    } finally {
+      setLoadingYatras(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && user.id && user.token) {
+      fetchYatras();
+    }
+  }, [user, fetchYatras]);
+
+  const handleSaveYatra = async (yatraData) => {
+    if (!user || !user.token) return;
+    try {
+      const method = yatraData.id ? 'PUT' : 'POST';
+      const url = yatraData.id ? `${API_BASE}/yatras/${yatraData.id}` : `${API_BASE}/yatras`;
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(yatraData)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setSuccessMsg(yatraData.id ? "SatsangYatra structure successfully saved!" : "New Lakshya successfully created!");
+        setTimeout(() => setSuccessMsg(''), 5000);
+        fetchYatras();
+        setSelectedYatra(saved);
+        setSelectedYatraMode('tracker');
+        setCurrentView('yatra-tracker');
+      } else {
+        setErrorMsg("Failed to save Yatra structure.");
+        setTimeout(() => setErrorMsg(''), 5000);
+      }
+    } catch (e) {
+      console.error("Save Yatra error:", e);
+      setErrorMsg("Error connecting to server while saving Yatra.");
+      setTimeout(() => setErrorMsg(''), 5000);
+    }
+  };
+
+  const handleDeleteYatra = async (yatraId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this Lakshya?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/yatras/${yatraId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      if (res.ok) {
+        setSuccessMsg("Lakshya successfully removed.");
+        setTimeout(() => setSuccessMsg(''), 5000);
+        fetchYatras();
+        if (selectedYatra && selectedYatra.id === yatraId) {
+          setSelectedYatra(null);
+          setCurrentView('dashboard');
+        }
+      }
+    } catch (e) {
+      console.error("Delete Yatra error:", e);
+    }
+  };
+
+  const handleCloneYatra = async (publicYatra) => {
+    try {
+      const cloned = {
+        title: `${publicYatra.title} (Clone)`,
+        description: publicYatra.description,
+        isPublic: false,
+        topics: publicYatra.topics ? JSON.parse(JSON.stringify(publicYatra.topics)) : []
+      };
+      
+      const resetNodes = (list) => {
+        list.forEach(node => {
+          node.id = null;
+          node.status = "not-started";
+          node.timeSpent = 0;
+          node.userNotes = "";
+          node.aiAnalysis = null;
+          if (node.subtopics) resetNodes(node.subtopics);
+        });
+      };
+      resetNodes(cloned.topics);
+
+      const res = await fetch(`${API_BASE}/yatras`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(cloned)
+      });
+      if (res.ok) {
+        setSuccessMsg("Public SatsangYatra cloned to your Lakshyas!");
+        setTimeout(() => setSuccessMsg(''), 5000);
+        fetchYatras();
+      }
+    } catch (e) {
+      console.error("Cloning error:", e);
+    }
+  };
 
   // Fetch Journals for the Seeker
   const fetchSeekerJournals = async (userId, customToken = null) => {
@@ -759,7 +946,7 @@ function App() {
       if (res.ok) {
         const data = await res.json() // Contains User object + JWT in token field
         setUser(data)
-        setRoadmapData(data.roadmapData || {})
+        loadAndMergeRoadmap(data.roadmapData)
         setEditName(data.name || '')
         setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
         setEditSkills(data.additionalSkills || [])
@@ -803,7 +990,8 @@ function App() {
         body: JSON.stringify({
           name: editName,
           bio: editBio,
-          additionalSkills: editSkills
+          additionalSkills: editSkills,
+          acharyaPersona: editPersona
         })
       })
       
@@ -811,7 +999,7 @@ function App() {
         const data = await res.json()
         const updatedUser = { ...data, token: user.token }
         setUser(updatedUser)
-        setRoadmapData(updatedUser.roadmapData || {})
+        loadAndMergeRoadmap(updatedUser.roadmapData)
         localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
         setIsEditingPortfolio(false)
         setSuccessMsg("Portfolio profile saved successfully!")
@@ -1756,6 +1944,159 @@ function App() {
           </div>
           <Tracker user={user} onRoadmapUpdate={handleRoadmapUpdate} />
         </div>
+      ) : currentView === 'yatra-gallery' ? (
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 20px 40px 20px', fontFamily: 'var(--font-sans)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0' }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.6rem', color: 'var(--accent-gold)', margin: 0 }}>🛕 SatsangYatra Portal</h2>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Explore public yatras or manage your private Lakshyas.</p>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button 
+                className="btn btn-gold" 
+                onClick={() => {
+                  setSelectedYatra(null);
+                  setSelectedYatraMode('designer');
+                  setCurrentView('yatra-designer');
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+              >
+                + Initiate Lakshya
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setCurrentView('dashboard')}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-tabs: My Lakshyas & Public Gallery */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
+            <button 
+              onClick={() => setSelectedYatraMode('gallery')}
+              style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: selectedYatraMode === 'gallery' ? '2px solid var(--accent-gold)' : 'none', color: selectedYatraMode === 'gallery' ? 'var(--accent-gold)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+            >
+              Your Lakshyas
+            </button>
+            <button 
+              onClick={() => setSelectedYatraMode('public')}
+              style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: selectedYatraMode === 'public' ? '2px solid var(--accent-gold)' : 'none', color: selectedYatraMode === 'public' ? 'var(--accent-gold)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+            >
+              Public Satsang Gallery
+            </button>
+          </div>
+
+          {selectedYatraMode === 'gallery' ? (
+            /* My Yatras list */
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              {myYatras.length === 0 ? (
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)' }}>
+                  You have not initiated any Lakshyas yet. Click "+ Initiate Lakshya" to build your custom path!
+                </div>
+              ) : (
+                myYatras.map(y => (
+                  <div key={y.id} className="card" style={{ background: 'var(--bg-secondary)', padding: '18px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 160 }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{y.title}</h4>
+                        <span style={{ fontSize: '10px', padding: '2px 6px', background: y.public ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)', color: y.public ? 'var(--color-success)' : 'var(--text-muted)', borderRadius: 4 }}>
+                          {y.public ? 'Public' : 'Private'}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4, height: '40px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {y.description || 'No description provided.'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button 
+                        onClick={() => { setSelectedYatra(y); setSelectedYatraMode('tracker'); setCurrentView('yatra-tracker'); }}
+                        className="btn btn-gold" 
+                        style={{ flex: 1.5, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem' }}
+                      >
+                        Start Journey
+                      </button>
+                      <button 
+                        onClick={() => { setSelectedYatra(y); setSelectedYatraMode('designer'); setCurrentView('yatra-designer'); }}
+                        className="btn btn-secondary" 
+                        style={{ flex: 1, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem' }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteYatra(y.id)}
+                        className="btn btn-secondary" 
+                        style={{ minHeight: 'auto', padding: '6px 10px', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.2)' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            /* Public Gallery list */
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              {publicYatras.length === 0 ? (
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)' }}>
+                  No public SatsangYatras shared by the community yet.
+                </div>
+              ) : (
+                publicYatras.map(y => (
+                  <div key={y.id} className="card" style={{ background: 'var(--bg-secondary)', padding: '18px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 160 }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{y.title}</h4>
+                      <div style={{ fontSize: '10px', color: 'var(--accent-gold)', marginTop: 2 }}>Created by: {y.userName || 'Seeker'}</div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4, height: '40px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {y.description || 'No description provided.'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button 
+                        onClick={() => { setSelectedYatra(y); setSelectedYatraMode('tracker'); setCurrentView('yatra-tracker'); }}
+                        className="btn btn-secondary" 
+                        style={{ flex: 1, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem' }}
+                      >
+                        Preview
+                      </button>
+                      <button 
+                        onClick={() => handleCloneYatra(y)}
+                        className="btn btn-gold" 
+                        style={{ flex: 1.5, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                      >
+                        <Sparkles size={11} /> Clone Path
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      ) : currentView === 'yatra-tracker' && selectedYatra ? (
+        <YatraTracker 
+          yatra={selectedYatra}
+          user={user}
+          onUpdate={handleSaveYatra}
+          onBack={() => {
+            setSelectedYatra(null);
+            setSelectedYatraMode('gallery');
+            setCurrentView('yatra-gallery');
+          }}
+        />
+      ) : currentView === 'yatra-designer' ? (
+        <YatraDesigner 
+          yatra={selectedYatra}
+          onSave={handleSaveYatra}
+          onClose={() => {
+            setSelectedYatra(null);
+            setSelectedYatraMode('gallery');
+            setCurrentView('yatra-gallery');
+          }}
+        />
       ) : (
         <div className="dashboard-grid">
         {/* Left Column: Input Form, Glossary, Audio focus Deck */}
@@ -1967,6 +2308,21 @@ function App() {
                   />
                 </div>
                 
+                <div className="form-group">
+                  <label className="form-label">Select Acharya Persona (AI Guide)</label>
+                  <select 
+                    className="form-input" 
+                    value={editPersona}
+                    onChange={(e) => setEditPersona(e.target.value)}
+                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '0.4rem 0.6rem' }}
+                  >
+                    <option value="dronacharya">🏹 Guru Dronacharya (Strict, Precise, Warrior Focus)</option>
+                    <option value="patanjali">🧘 Maharshi Patanjali (Calm, Meditative, Mindful Progression)</option>
+                    <option value="vivekananda">🔥 Swami Vivekananda (Inspiring, Empowering, Relentless Action)</option>
+                    <option value="chanakya">💼 Chanakya Kautilya (Strategic, Cunning, Highly Logical)</option>
+                  </select>
+                </div>
+                
                 <div className="portfolio-skills-section">
                   <div className="skills-group">
                     <span className="skills-group-title">
@@ -2030,6 +2386,15 @@ function App() {
             ) : (
               <div>
                 <p className="portfolio-bio-display">"{user.bio || 'Passionate Seeker on the GyanYatra.'}"</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--accent-gold)', marginBottom: '1rem', background: 'rgba(243,156,18,0.05)', border: '1px solid rgba(243,156,18,0.1)', padding: '4px 10px', borderRadius: 4, width: 'fit-content' }}>
+                  <span>🕉️ Active Acharya Guide:</span>
+                  <strong>
+                    {user.acharyaPersona === 'patanjali' ? 'Maharshi Patanjali' :
+                     user.acharyaPersona === 'vivekananda' ? 'Swami Vivekananda' :
+                     user.acharyaPersona === 'chanakya' ? 'Chanakya Kautilya' :
+                     'Guru Dronacharya'}
+                  </strong>
+                </div>
                 
                 {/* Contribution heatwave map */}
                 <div style={{ marginBottom: '1.25rem' }}>
@@ -2192,6 +2557,71 @@ function App() {
               </div>
             </div>
           )}
+
+          {/* Custom SatsangYatra / Lakshya Widget */}
+          <div className="card" style={{ border: '1px solid rgba(99, 102, 241, 0.2)', background: 'rgba(99, 102, 241, 0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '1.5rem' }}>🛕</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-primary)', fontFamily: 'var(--font-display)', fontWeight: 700 }}>Custom Yatras & Lakshyas</h3>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  Design custom nested roadmaps or follow public learning paths.
+                </p>
+              </div>
+            </div>
+            
+            {/* Weekly Target Progress */}
+            <div style={{ margin: '0.75rem 0', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginBottom: 4 }}>
+                <span>Weekly Sadhana Goal</span>
+                <span>
+                  {Math.round(myYatras.reduce((acc, y) => {
+                    let yatraSecs = 0;
+                    const traverse = (list) => {
+                      if (!list) return;
+                      list.forEach(node => {
+                        yatraSecs += (node.timeSpent || 0);
+                        if (node.subtopics) traverse(node.subtopics);
+                      });
+                    };
+                    traverse(y.topics || []);
+                    return acc + yatraSecs;
+                  }, 0) / 60)} / {weeklyGoalMinutes} min
+                </span>
+              </div>
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.05)', borderRadius: 2.5, overflow: 'hidden' }}>
+                <div 
+                  style={{ 
+                    height: '100%', 
+                    background: 'var(--accent-gold)', 
+                    width: `${Math.min(100, Math.round((myYatras.reduce((acc, y) => {
+                      let yatraSecs = 0;
+                      const traverse = (list) => {
+                        if (!list) return;
+                        list.forEach(node => {
+                          yatraSecs += (node.timeSpent || 0);
+                          if (node.subtopics) traverse(node.subtopics);
+                        });
+                      };
+                      traverse(y.topics || []);
+                      return acc + yatraSecs;
+                    }, 0) / 60) / weeklyGoalMinutes * 100))}%` 
+                  }} 
+                />
+              </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                setSelectedYatraMode('gallery');
+                setCurrentView('yatra-gallery');
+              }} 
+              className="btn btn-primary" 
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: 'auto', padding: '0.5rem', fontSize: '0.8rem', background: 'var(--color-primary)' }}
+            >
+              <BookOpen size={12} /> Open Yatra Portal
+            </button>
+          </div>
 
           {/* Seeker Leaderboards */}
           <div className="card leaderboard-widget">

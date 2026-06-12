@@ -58,6 +58,7 @@ public class AcharyaService {
         - gapSuggestions: Critical concepts or application details they missed or misunderstood.
         - masteryScore: An integer between 0 and 100 (Karma points).
         - relevantTrials: List of strings (ALL items MUST be fully-formed, valid, clickable URLs starting with 'https://').
+        - recallQuestions: List of exactly 3 active recall question strings based on the notes and topic to consolidate memory.
         """;
 
     /**
@@ -81,8 +82,14 @@ public class AcharyaService {
      * Generates insights and FAANG/Productivity Trials for the Seeker's log.
      */
     public AcharyaAnalysis generateInsight(Journal journal, String lessonTitle) {
+        return generateInsight(journal, lessonTitle, "dronacharya");
+    }
+
+    public AcharyaAnalysis generateInsight(Journal journal, String lessonTitle, String persona) {
         try {
-            PromptTemplate template = new PromptTemplate(ACHARYA_MAIN_PROMPT_TEMPLATE);
+            String personaInstruction = getPersonaSystemInstruction(persona);
+            String fullPrompt = personaInstruction + "\n\n" + ACHARYA_MAIN_PROMPT_TEMPLATE;
+            PromptTemplate template = new PromptTemplate(fullPrompt);
             Prompt prompt = template.create(Map.of(
                     "lessonTitle", lessonTitle,
                     "userNotes", journal.getUserNotes()
@@ -288,7 +295,73 @@ public class AcharyaService {
         String feedback = "Excellent effort! You have grasped the main concepts of " + lessonTitle + ". " +
                 "Your notes show good understanding. To reach elite mastery, focus on consistency and practical implementation.";
 
-        return new AcharyaAnalysis(feedback, concepts, gaps, score, trials);
+        List<String> recallQuestions = List.of(
+            "What is the core design philosophy behind " + lessonTitle + "?",
+            "Explain one primary edge case or limitation you must handle when applying " + lessonTitle + ".",
+            "How does " + lessonTitle + " improve time/space efficiency or personal productivity?"
+        );
+
+        return new AcharyaAnalysis(feedback, concepts, gaps, score, trials, recallQuestions);
+    }
+
+    private String getPersonaSystemInstruction(String persona) {
+        String base = "You are the Acharya, a wise technical guide and personal growth mentor for Gyan Yatra.";
+        if (persona == null) persona = "dronacharya";
+        switch (persona.toLowerCase()) {
+            case "patanjali":
+                return base + " Speak in the persona of Maharshi Patanjali. You are serene, meditative, and focused on mindfulness, step-by-step clarity, and control of the mind. Prefix your response with Sanskrit quote: 'पतञ्जलि उवाच: योगश्चित्तवृत्तिनिरोधः।' (Yoga is the restriction of the fluctuations of mind.) or another yoga-themed Sanskrit quote, and explain it briefly.";
+            case "vivekananda":
+                return base + " Speak in the persona of Swami Vivekananda. You are energetic, fiery, extremely encouraging, and motivational. You tell the seeker to tap into their infinite strength and knowledge. Prefix your response with Sanskrit quote: 'विवेकानन्द उवाच: उत्तिष्ठत जाग्रत प्राप्य वरान्निबोधत।' (Arise, awake, and stop not till the goal is reached.) or another motivational Sanskrit quote.";
+            case "chanakya":
+                return base + " Speak in the persona of Chanakya (Kautilya). You are strategic, highly logical, realistic, and focused on resource optimization, strict rules, and pragmatic implementation. Prefix your response with Sanskrit quote: 'चाणक्य उवाच: निश्चितं यः समारभते नापवर्गं प्रबाधते।' (One who starts with a firm resolve does not stop until completion.) or another policy/strategy Sanskrit quote.";
+            case "dronacharya":
+            default:
+                return base + " Speak in the persona of Guru Dronacharya. You are strict, highly demanding, martial, and focused on absolute target accuracy (like hitting the wooden bird's eye). Metaphors should relate to weaponry, archery, and warrior focus. Prefix your response with Sanskrit quote: 'द्रोणाचार्य उवाच: उद्यमेन हि सिध्यन्ति कार्याणि न मनोरथैः।' (Success is achieved through effort, not mere wishes.) or another discipline-themed Sanskrit quote.";
+        }
+    }
+
+    private String getFallbackTutorResponse(String persona, String topicTitle, String userMessage) {
+        if (persona == null) persona = "dronacharya";
+        switch (persona.toLowerCase()) {
+            case "patanjali":
+                return "पतञ्जलि उवाच: योगश्चित्तवृत्तिनिरोधः। (Yoga is the control of mind.) Calm thy mind, Seeker. Let us focus on " + topicTitle + " with steady attention. Your query: '" + userMessage + "' shows the mind seeking knowledge.";
+            case "vivekananda":
+                return "विवेकानन्द उवाच: उत्तिष्ठत जाग्रत प्राप्य वरान्निबोधत। (Arise, awake!) Have strength, Seeker! You are fully capable of mastering " + topicTitle + ". Regarding: '" + userMessage + "', believe in your inner potential and push forward!";
+            case "chanakya":
+                return "चाणक्य उवाच: निश्चितं यः समारभते नापवर्गं प्रबाधते। (Firm resolve leads to completion.) We must approach " + topicTitle + " strategically. Regarding: '" + userMessage + "', apply discipline and resourcefulness to solve it.";
+            case "dronacharya":
+            default:
+                return "द्रोणाचार्य उवाच: उद्यमेन हि सिध्यन्ति कार्याणि न मनोरथैः। (Tasks are accomplished by effort, not desires.) Focus your mind like Arjuna targeting the bird's eye! We are studying " + topicTitle + ". Regarding: '" + userMessage + "', analyze the core components of the problem strictly.";
+        }
+    }
+
+    public String generateTutorResponse(String persona, String topicTitle, String notes, String videoMetadata, List<Map<String, String>> history, String userMessage) {
+        try {
+            String personaInstruction = getPersonaSystemInstruction(persona);
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append(personaInstruction).append("\n\n");
+            promptBuilder.append("Context for the Seeker's Study Session:\n");
+            promptBuilder.append("- Topic: ").append(topicTitle).append("\n");
+            if (notes != null && !notes.trim().isEmpty()) {
+                promptBuilder.append("- Seeker's Notes: ").append(notes).append("\n");
+            }
+            if (videoMetadata != null && !videoMetadata.trim().isEmpty()) {
+                promptBuilder.append("- Video Metadata: ").append(videoMetadata).append("\n");
+            }
+            promptBuilder.append("\nChat History:\n");
+            if (history != null) {
+                for (Map<String, String> msg : history) {
+                    promptBuilder.append(msg.get("role").toUpperCase()).append(": ").append(msg.get("content")).append("\n");
+                }
+            }
+            promptBuilder.append("SEEKER: ").append(userMessage).append("\n");
+            promptBuilder.append("ACHARYA: Response should start with or contain a relevant Sanskrit quote if possible, and maintain your persona tone.");
+
+            return chatClient.prompt(promptBuilder.toString()).call().content();
+        } catch (Exception e) {
+            log.error("Failed to generate tutor chat response. Falling back to default response.", e);
+            return getFallbackTutorResponse(persona, topicTitle, userMessage);
+        }
     }
 }
 
@@ -300,10 +373,11 @@ record AcharyaAnalysisResponse(
         List<String> identifiedConcepts,
         List<String> gapSuggestions,
         Integer masteryScore,
-        List<String> relevantTrials
+        List<String> relevantTrials,
+        List<String> recallQuestions
 ) {
     public AcharyaAnalysis toAcharyaAnalysis() {
-        return new AcharyaAnalysis(feedback, identifiedConcepts, gapSuggestions, masteryScore, relevantTrials);
+        return new AcharyaAnalysis(feedback, identifiedConcepts, gapSuggestions, masteryScore, relevantTrials, recallQuestions != null ? recallQuestions : List.of());
     }
 }
 
