@@ -240,11 +240,12 @@ export default function Tracker({ user, onRoadmapUpdate }) {
     const todayStr = getLocalYMD(new Date());
     let currentStudyDates = { ...(data.roadmapStudyDates || {}) };
     
-    // Check if the user has studied this topic/subtopic
-    const timeSpent = getTime(id) + (timerTopicId === id ? timerSeconds : 0);
+    // Anti-cheat: Check if the user has studied this topic/subtopic TODAY
+    const dailyKey = `dailyTime_${todayStr}_${id}`;
+    const todaySeconds = (data[dailyKey] || 0) + (timerTopicId === id ? timerSeconds : 0);
     
-    // Only increment streak (add to today's study dates) if they set it to done/in-progress AND spent time studying it
-    if ((next === "done" || next === "in-progress") && timeSpent > 0) {
+    // Only increment streak if they set it to done/in-progress AND spent time studying it TODAY
+    if ((next === "done" || next === "in-progress") && todaySeconds > 0) {
       if (!currentStudyDates[todayStr]) {
         currentStudyDates[todayStr] = [];
       }
@@ -252,7 +253,7 @@ export default function Tracker({ user, onRoadmapUpdate }) {
         currentStudyDates[todayStr].push(id);
       }
     } else {
-      // If changing back to not-started/needs-revision, or if no time spent, remove it
+      // If changing back to not-started/needs-revision, or if no time spent today, remove it
       if (currentStudyDates[todayStr]) {
         currentStudyDates[todayStr] = currentStudyDates[todayStr].filter(x => x !== id);
         if (currentStudyDates[todayStr].length === 0) {
@@ -269,16 +270,56 @@ export default function Tracker({ user, onRoadmapUpdate }) {
   };
 
   const startTimer = (id) => {
+    const todayStr = getLocalYMD(new Date());
     if (timerRunning && timerTopicId === id) {
       // stop & save
-      const newData = { ...data, [`time_${id}`]: getTime(id) + timerSeconds };
+      const dailyKey = `dailyTime_${todayStr}_${id}`;
+      const status = getStatus(id);
+      let currentStudyDates = { ...(data.roadmapStudyDates || {}) };
+      const newDailyTime = (data[dailyKey] || 0) + timerSeconds;
+      
+      // If status is done/in-progress and they run the timer, it activates/re-validates the streak
+      if ((status === "done" || status === "in-progress") && newDailyTime > 0) {
+        if (!currentStudyDates[todayStr]) {
+          currentStudyDates[todayStr] = [];
+        }
+        if (!currentStudyDates[todayStr].includes(id)) {
+          currentStudyDates[todayStr].push(id);
+        }
+      }
+
+      const newData = { 
+        ...data, 
+        [`time_${id}`]: getTime(id) + timerSeconds,
+        [dailyKey]: newDailyTime,
+        roadmapStudyDates: currentStudyDates
+      };
       save(newData);
       setTimerRunning(false);
       setTimerSeconds(0);
       setTimerTopicId(null);
     } else {
       if (timerRunning && timerTopicId) {
-        const newData = { ...data, [`time_${timerTopicId}`]: getTime(timerTopicId) + timerSeconds };
+        const prevDailyKey = `dailyTime_${todayStr}_${timerTopicId}`;
+        const prevStatus = getStatus(timerTopicId);
+        let currentStudyDates = { ...(data.roadmapStudyDates || {}) };
+        const newDailyTime = (data[prevDailyKey] || 0) + timerSeconds;
+
+        if ((prevStatus === "done" || prevStatus === "in-progress") && newDailyTime > 0) {
+          if (!currentStudyDates[todayStr]) {
+            currentStudyDates[todayStr] = [];
+          }
+          if (!currentStudyDates[todayStr].includes(timerTopicId)) {
+            currentStudyDates[todayStr].push(timerTopicId);
+          }
+        }
+
+        const newData = { 
+          ...data, 
+          [`time_${timerTopicId}`]: getTime(timerTopicId) + timerSeconds,
+          [prevDailyKey]: newDailyTime,
+          roadmapStudyDates: currentStudyDates
+        };
         save(newData);
       }
       setTimerSeconds(0);

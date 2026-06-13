@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Play, Clock, CheckCircle, Send, Loader, ExternalLink, Sparkles, Edit, BookOpen, ChevronDown, ChevronRight, Eye, RefreshCw, Award, Volume2, X } from "lucide-react";
 
-export default function YatraTracker({ yatra, user, onUpdate, onBack }) {
+export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
@@ -75,6 +75,21 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack }) {
     };
     const updatedYatra = { ...yatra, topics: updateTree(yatra.topics) };
     onUpdate(updatedYatra);
+
+    if (onRecordStudy) {
+      const findStatus = (list) => {
+        for (let item of list) {
+          if (item.id === topicId) return item.status || "not-started";
+          if (item.subtopics && item.subtopics.length > 0) {
+            const s = findStatus(item.subtopics);
+            if (s) return s;
+          }
+        }
+        return null;
+      };
+      const topicStatus = findStatus(yatra.topics) || "not-started";
+      onRecordStudy(topicId, topicStatus, seconds);
+    }
   };
 
   const getYoutubeVideoId = (url) => {
@@ -113,11 +128,12 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack }) {
   // Cycle topic status
   const cycleStatus = (topicId) => {
     const statusCycle = ["not-started", "in-progress", "done", "needs-revision"];
+    let nextStatus = "not-started";
     const updateTree = (list) => {
       return list.map(item => {
         if (item.id === topicId) {
           const curIdx = statusCycle.indexOf(item.status || "not-started");
-          const nextStatus = statusCycle[(curIdx + 1) % statusCycle.length];
+          nextStatus = statusCycle[(curIdx + 1) % statusCycle.length];
           return { ...item, status: nextStatus };
         }
         if (item.subtopics && item.subtopics.length > 0) {
@@ -129,10 +145,12 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack }) {
     const updatedYatra = { ...yatra, topics: updateTree(yatra.topics) };
     onUpdate(updatedYatra);
 
+    if (onRecordStudy) {
+      onRecordStudy(topicId, nextStatus, 0);
+    }
+
     // Update selectedTopic status in state
     if (selectedTopic && selectedTopic.id === topicId) {
-      const curIdx = statusCycle.indexOf(selectedTopic.status || "not-started");
-      const nextStatus = statusCycle[(curIdx + 1) % statusCycle.length];
       setSelectedTopic(prev => ({ ...prev, status: nextStatus }));
     }
   };

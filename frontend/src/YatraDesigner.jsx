@@ -89,62 +89,7 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
     });
   };
 
-  // Recursive component for rendering design nodes
-  const DesignNode = ({ node, depth = 0 }) => {
-    const isCollapsed = collapsedNodes[node.id];
-    const hasChildren = node.subtopics && node.subtopics.length > 0;
 
-    return (
-      <div style={{ marginLeft: depth > 0 ? "24px" : "0", borderLeft: depth > 0 ? "1px dashed var(--border-color)" : "none", paddingLeft: depth > 0 ? "16px" : "0", marginBottom: "12px" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
-          {hasChildren ? (
-            <button onClick={() => toggleCollapse(node.id)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
-              {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-            </button>
-          ) : (
-            <div style={{ width: 16 }} />
-          )}
-
-          <input
-            type="text"
-            placeholder="Topic Title (e.g. Master Replication)"
-            value={node.title}
-            onChange={(e) => updateTopic(node.id, { title: e.target.value })}
-            style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 4, fontSize: 13 }}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Clock size={14} style={{ color: "var(--text-muted)" }} />
-            <input
-              type="number"
-              placeholder="Min"
-              value={node.targetTime}
-              onChange={(e) => updateTopic(node.id, { targetTime: parseInt(e.target.value) || 0 })}
-              style={{ width: 55, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 8px", borderRadius: 4, fontSize: 12, textAlign: "center" }}
-              title="Target study duration (minutes)"
-            />
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>min</span>
-          </div>
-
-          <button onClick={() => addTopic(node.id)} className="btn btn-secondary" style={{ padding: "6px 10px", minHeight: "auto", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }} title="Add subtopic">
-            <Plus size={12} /> Subtopic
-          </button>
-
-          <button onClick={() => removeTopic(node.id)} style={{ background: "none", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px" }} title="Remove topic">
-            <Trash2 size={15} />
-          </button>
-        </div>
-
-        {hasChildren && !isCollapsed && (
-          <div style={{ marginTop: "8px" }}>
-            {node.subtopics.map(child => (
-              <DesignNode key={child.id} node={child} depth={depth + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div style={{ padding: "24px", maxWidth: "850px", margin: "0 auto", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
@@ -223,7 +168,15 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
         ) : (
           <div>
             {topics.map(topic => (
-              <DesignNode key={topic.id} node={topic} />
+              <DesignNode 
+                key={topic.id} 
+                node={topic} 
+                collapsedNodes={collapsedNodes}
+                toggleCollapse={toggleCollapse}
+                updateTopic={updateTopic}
+                addTopic={addTopic}
+                removeTopic={removeTopic}
+              />
             ))}
           </div>
         )}
@@ -238,6 +191,72 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
           <Save size={16} /> Save Yatra Structure
         </button>
       </div>
+    </div>
+  );
+}
+
+// Standalone recursive component for rendering design nodes to prevent focus loss during renders
+function DesignNode({ node, depth = 0, collapsedNodes, toggleCollapse, updateTopic, addTopic, removeTopic }) {
+  const isCollapsed = collapsedNodes[node.id];
+  const hasChildren = node.subtopics && node.subtopics.length > 0;
+
+  return (
+    <div style={{ marginLeft: depth > 0 ? "24px" : "0", borderLeft: depth > 0 ? "1px dashed var(--border-color)" : "none", paddingLeft: depth > 0 ? "16px" : "0", marginBottom: "12px" }}>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
+        {hasChildren ? (
+          <button onClick={() => toggleCollapse(node.id)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          </button>
+        ) : (
+          <div style={{ width: 16 }} />
+        )}
+
+        <input
+          type="text"
+          placeholder="Topic Title (e.g. Master Replication)"
+          value={node.title}
+          onChange={(e) => updateTopic(node.id, { title: e.target.value })}
+          style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 4, fontSize: 13 }}
+        />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Clock size={14} style={{ color: "var(--text-muted)" }} />
+          <input
+            type="number"
+            placeholder="Min"
+            value={node.targetTime}
+            onChange={(e) => updateTopic(node.id, { targetTime: parseInt(e.target.value) || 0 })}
+            style={{ width: 55, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 8px", borderRadius: 4, fontSize: 12, textAlign: "center" }}
+            title="Target study duration (minutes)"
+          />
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>min</span>
+        </div>
+
+        <button onClick={() => addTopic(node.id)} className="btn btn-secondary" style={{ padding: "6px 10px", minHeight: "auto", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }} title="Add subtopic">
+          <Plus size={12} /> Subtopic
+        </button>
+
+        <button onClick={() => removeTopic(node.id)} style={{ background: "none", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px" }} title="Remove topic">
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {hasChildren && !isCollapsed && (
+        <div style={{ marginTop: "8px" }}>
+          {node.subtopics.map(child => (
+            <DesignNode 
+              key={child.id} 
+              node={child} 
+              depth={depth + 1} 
+              collapsedNodes={collapsedNodes}
+              toggleCollapse={toggleCollapse}
+              updateTopic={updateTopic}
+              addTopic={addTopic}
+              removeTopic={removeTopic}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

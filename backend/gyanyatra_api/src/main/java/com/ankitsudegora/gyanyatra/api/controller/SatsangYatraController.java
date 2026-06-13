@@ -2,7 +2,9 @@ package com.ankitsudegora.gyanyatra.api.controller;
 
 import com.ankitsudegora.gyanyatra.ai.service.AcharyaService;
 import com.ankitsudegora.gyanyatra.core.exception.GyanYatraException;
+import com.ankitsudegora.gyanyatra.core.model.Journal;
 import com.ankitsudegora.gyanyatra.core.model.SatsangYatra;
+import com.ankitsudegora.gyanyatra.core.service.JournalService;
 import com.ankitsudegora.gyanyatra.core.service.SatsangYatraService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class SatsangYatraController {
 
     private final SatsangYatraService yatraService;
     private final AcharyaService acharyaService;
+    private final JournalService journalService;
 
     @PostMapping
     public ResponseEntity<SatsangYatra> createYatra(
@@ -122,6 +125,21 @@ public class SatsangYatraController {
             analysis = acharyaService.generateMockInsightDirect(mockJournal, target.getTitle());
         } else {
             analysis = acharyaService.generateInsight(mockJournal, target.getTitle(), persona);
+        }
+
+        // Persist as a verified Journal entry in MongoDB to update seeker streaks and journal history
+        Journal realJournal = Journal.builder()
+                .userId(userId)
+                .videoUrl(target.getVideoUrl())
+                .userNotes(target.getUserNotes())
+                .isVerified(true)
+                .aiAnalysis(analysis)
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+        try {
+            journalService.submitLog(realJournal);
+        } catch (Exception e) {
+            log.error("Failed to persist custom Yatra meditation journal entry", e);
         }
 
         return ResponseEntity.ok(yatraService.saveTopicAnalysis(userId, yatraId, topicId, analysis));
