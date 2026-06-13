@@ -220,12 +220,31 @@ const calculateStreaks = (userJournals, roadmapData) => {
 // ==========================================================================
 // TOPIC & CATEGORY STATISTICS HELPER
 // ==========================================================================
-const getCategoryStats = (journals, roadmapData) => {
+const getCategoryStats = (journals, roadmapData, myYatras) => {
   let totalTopics = 0;
   let techCount = 0;
   let growthCount = 0;
   const techTopics = new Set();
   const growthTopics = new Set();
+
+  const findCustomTopicTitle = (id) => {
+    if (!myYatras) return null;
+    const searchNode = (nodes) => {
+      for (let node of nodes) {
+        if (node.id === id) return node.title;
+        if (node.subtopics && node.subtopics.length > 0) {
+          const t = searchNode(node.subtopics);
+          if (t) return t;
+        }
+      }
+      return null;
+    };
+    for (let y of myYatras) {
+      const t = searchNode(y.topics || []);
+      if (t) return t;
+    }
+    return null;
+  };
 
   if (journals) {
     journals.forEach(j => {
@@ -258,9 +277,12 @@ const getCategoryStats = (journals, roadmapData) => {
         totalTopics++;
         techCount++;
 
-        let resolvedTitle = topicId.split('_sub_')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        if (topicId.includes('_sub_')) {
-          resolvedTitle += ` (Subtopic ${Number(topicId.split('_sub_')[1]) + 1})`;
+        let resolvedTitle = findCustomTopicTitle(topicId);
+        if (!resolvedTitle) {
+          resolvedTitle = topicId.split('_sub_')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          if (topicId.includes('_sub_')) {
+            resolvedTitle += ` (Subtopic ${Number(topicId.split('_sub_')[1]) + 1})`;
+          }
         }
         techTopics.add(resolvedTitle);
       }
@@ -606,7 +628,7 @@ function App() {
 
   // Compute live streaks & category stats
   const streaks = useMemo(() => calculateStreaks(journals, roadmapData), [journals, roadmapData])
-  const categoryStats = useMemo(() => getCategoryStats(journals, roadmapData), [journals, roadmapData])
+  const categoryStats = useMemo(() => getCategoryStats(journals, roadmapData, myYatras), [journals, roadmapData, myYatras])
 
   // Load user from LocalStorage on mount
   useEffect(() => {
@@ -753,6 +775,70 @@ function App() {
       setTimeout(() => setErrorMsg(''), 5000);
     }
   };
+
+  const recordStudyEvent = useCallback((topicId, status, seconds = 0) => {
+    const todayStr = getLocalYMD(new Date());
+    let localRoadmap = {};
+    try {
+      const local = localStorage.getItem("tracker-data");
+      if (local) localRoadmap = JSON.parse(local);
+    } catch (e) {}
+
+    const dailyKey = `dailyTime_${todayStr}_${topicId}`;
+    localRoadmap[dailyKey] = (localRoadmap[dailyKey] || 0) + seconds;
+
+    if (seconds > 0) {
+      localRoadmap[`time_${topicId}`] = (localRoadmap[`time_${topicId}`] || 0) + seconds;
+    }
+
+    if (status) {
+      localRoadmap[`status_${topicId}`] = status;
+    }
+
+    const todaySeconds = localRoadmap[dailyKey] || 0;
+    const currentStatus = localRoadmap[`status_${topicId}`] || status;
+
+    if (!localRoadmap.roadmapStudyDates) {
+      localRoadmap.roadmapStudyDates = {};
+    }
+
+    const currentStudyDates = { ...localRoadmap.roadmapStudyDates };
+
+    // Prevent cheating: only activate streak if they spent > 0 seconds today on this topic AND status is in-progress/done
+    if ((currentStatus === "done" || currentStatus === "in-progress") && todaySeconds > 0) {
+      if (!currentStudyDates[todayStr]) {
+        currentStudyDates[todayStr] = [];
+      }
+      if (!currentStudyDates[todayStr].includes(topicId)) {
+        currentStudyDates[todayStr].push(topicId);
+      }
+    } else {
+      if (currentStudyDates[todayStr]) {
+        currentStudyDates[todayStr] = currentStudyDates[todayStr].filter(x => x !== topicId);
+        if (currentStudyDates[todayStr].length === 0) {
+          delete currentStudyDates[todayStr];
+        }
+      }
+    }
+
+    localRoadmap.roadmapStudyDates = currentStudyDates;
+
+    // Save locally
+    setRoadmapData(localRoadmap);
+    localStorage.setItem("tracker-data", JSON.stringify(localRoadmap));
+
+    // Sync to MongoDB
+    if (user && user.id && user.token) {
+      fetch(`${API_BASE}/yatra/users/${user.id}/roadmap`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(localRoadmap)
+      }).catch(err => console.error("Failed to sync record study event:", err));
+    }
+  }, [user, API_BASE]);
 
   const handleDeleteYatra = async (yatraId) => {
     if (!window.confirm("Are you sure you want to permanently delete this Lakshya?")) return;
@@ -2086,6 +2172,7 @@ function App() {
             setSelectedYatraMode('gallery');
             setCurrentView('yatra-gallery');
           }}
+          onRecordStudy={recordStudyEvent}
         />
       ) : currentView === 'yatra-designer' ? (
         <YatraDesigner 
