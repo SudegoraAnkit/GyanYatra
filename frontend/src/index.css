@@ -1,20 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-primary: #09090e;
-  --bg-secondary: #11111f;
-  --bg-card: rgba(22, 22, 40, 0.7);
-  --bg-card-hover: rgba(30, 30, 56, 0.85);
+  --bg-primary: #0f172a; /* Slate Grey */
+  --bg-secondary: #1e293b; /* Dark Elevated Grey */
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-card-hover: rgba(51, 65, 85, 0.85);
   
-  --accent-gold: #f39c12;
-  --accent-gold-glow: rgba(243, 156, 18, 0.3);
-  --accent-gold-dark: #d35400;
+  --accent-gold: #059669; /* Elegant Emerald progress accent */
+  --accent-gold-glow: rgba(5, 150, 105, 0.25);
+  --accent-gold-dark: #047857;
   
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
-  --color-primary-glow: rgba(99, 102, 241, 0.25);
+  --color-primary: #059669; /* Elegant Emerald */
+  --color-primary-hover: #047857;
+  --color-primary-glow: rgba(5, 150, 105, 0.25);
   
-  --color-success: #10b981;
+  --color-success: #059669;
   --color-danger: #ef4444;
   --color-info: #06b6d4;
   
@@ -22,11 +22,11 @@
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   
-  --border-color: rgba(99, 102, 241, 0.12);
-  --border-hover: rgba(99, 102, 241, 0.25);
+  --border-color: #334155; /* Subtle muted divider */
+  --border-hover: #475569;
   
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Outfit', sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif; /* Fatigue neutral Inter font */
   
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -35,18 +35,18 @@
 }
 
 :root[data-theme="light"] {
-  --bg-primary: #fcfbfa; /* Warm cream/ivory */
-  --bg-secondary: #f4f1ea; /* Soft warm sand/clay */
-  --bg-card: rgba(244, 241, 234, 0.85); /* Semi-translucent warm card */
-  --bg-card-hover: rgba(235, 230, 218, 0.95);
+  --bg-primary: #f9fafb; /* Soft Neutral Off-White */
+  --bg-secondary: #f3f4f6; /* Soft neutral grey secondary */
+  --bg-card: #ffffff; /* Pure Card White */
+  --bg-card-hover: #f9fafb;
   
-  --accent-gold: #c27d0c; /* Deeper gold for readability */
-  --accent-gold-glow: rgba(194, 125, 12, 0.15);
-  --accent-gold-dark: #965f04;
+  --accent-gold: #059669; /* Elegant Emerald progress accent */
+  --accent-gold-glow: rgba(5, 150, 105, 0.15);
+  --accent-gold-dark: #047857;
   
-  --color-primary: #4f46e5; /* Strong indigo for contrast */
-  --color-primary-hover: #3730a3;
-  --color-primary-glow: rgba(79, 70, 229, 0.15);
+  --color-primary: #059669; /* Elegant Emerald */
+  --color-primary-hover: #047857;
+  --color-primary-glow: rgba(5, 150, 105, 0.15);
   
   --color-success: #059669;
   --color-danger: #dc2626;
@@ -56,8 +56,8 @@
   --text-secondary: #475569; /* Slate secondary */
   --text-muted: #64748b;
   
-  --border-color: rgba(79, 70, 229, 0.15);
-  --border-hover: rgba(79, 70, 229, 0.3);
+  --border-color: #e5e7eb; /* Subtle muted divider */
+  --border-hover: #d1d5db;
 }
 
 * {

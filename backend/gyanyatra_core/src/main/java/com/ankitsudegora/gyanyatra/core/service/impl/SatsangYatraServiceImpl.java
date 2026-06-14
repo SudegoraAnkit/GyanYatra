@@ -58,8 +58,9 @@ public class SatsangYatraServiceImpl implements SatsangYatraService {
     }
 
     @Override
-    public Optional<SatsangYatra> getYatraById(String id) {
-        return repository.findById(id);
+    public Optional<SatsangYatra> getYatraById(String id, String userId) {
+        return repository.findById(id)
+                .filter(yatra -> yatra.isPublic() || (userId != null && yatra.getUserId().equals(userId)));
     }
 
     @Override

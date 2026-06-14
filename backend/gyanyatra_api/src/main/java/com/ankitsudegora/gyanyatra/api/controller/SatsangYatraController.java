@@ -56,7 +56,7 @@ public class SatsangYatraController {
             HttpServletRequest request,
             @PathVariable String yatraId) {
         String userId = (String) request.getAttribute("userId");
-        SatsangYatra yatra = yatraService.getYatraById(yatraId)
+        SatsangYatra yatra = yatraService.getYatraById(yatraId, userId)
                 .orElseThrow(() -> new GyanYatraException("Yatra not found", "GY-4-4", HttpStatus.NOT_FOUND));
 
         if (!yatra.isPublic() && (userId == null || !yatra.getUserId().equals(userId))) {
@@ -101,7 +101,7 @@ public class SatsangYatraController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        SatsangYatra yatra = yatraService.getYatraById(yatraId)
+        SatsangYatra yatra = yatraService.getYatraById(yatraId, userId)
                 .orElseThrow(() -> new GyanYatraException("Yatra not found", "GY-4-4", HttpStatus.NOT_FOUND));
 
         if (!yatra.getUserId().equals(userId)) {

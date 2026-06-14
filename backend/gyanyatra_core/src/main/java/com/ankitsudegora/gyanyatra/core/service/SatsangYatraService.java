@@ -10,7 +10,7 @@ public interface SatsangYatraService {
     SatsangYatra createYatra(String userId, SatsangYatra yatra);
     List<SatsangYatra> getMyYatras(String userId);
     List<SatsangYatra> getPublicYatras();
-    Optional<SatsangYatra> getYatraById(String id);
+    Optional<SatsangYatra> getYatraById(String id, String userId);
     SatsangYatra updateYatra(String userId, String id, SatsangYatra updatedYatra);
     void deleteYatra(String userId, String id);
     SatsangYatra saveTopicAnalysis(String userId, String yatraId, String topicId, AcharyaAnalysis analysis);

@@ -219,7 +219,37 @@ export default function Tracker({ user, onRoadmapUpdate }) {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [view, setView] = useState("roadmap"); // roadmap | section
+  const [selectedTopicId, setSelectedTopicId] = useState(null);
+  const [notesValue, setNotesValue] = useState("");
   const intervalRef = useRef(null);
+
+  const currentSection = activeSection ? CURRICULUM.find(s => s.id === activeSection) : null;
+  const selectedTopic = currentSection ? currentSection.topics.find(t => t.id === selectedTopicId) : null;
+
+  useEffect(() => {
+    if (activeSection && currentSection && currentSection.topics.length > 0) {
+      setSelectedTopicId(currentSection.topics[0].id);
+    } else {
+      setSelectedTopicId(null);
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (selectedTopicId) {
+      setNotesValue(data[`notes_${selectedTopicId}`] || "");
+    } else {
+      setNotesValue("");
+    }
+  }, [selectedTopicId, data]);
+
+  const saveNotes = () => {
+    if (selectedTopicId) {
+      save({
+        ...data,
+        [`notes_${selectedTopicId}`]: notesValue
+      });
+    }
+  };
 
   useEffect(() => {
     if (timerRunning) {
@@ -355,7 +385,7 @@ export default function Tracker({ user, onRoadmapUpdate }) {
     );
   }
 
-  const currentSection = activeSection ? CURRICULUM.find(s => s.id === activeSection) : null;
+
 
   return (
     <div style={{ background: "var(--bg-primary)", minHeight: "100vh", color: "var(--text-primary)", fontFamily: "'Inter', -apple-system, sans-serif", fontSize: 14 }}>
@@ -475,163 +505,240 @@ export default function Tracker({ user, onRoadmapUpdate }) {
       )}
 
       {view === "section" && currentSection && (
-        <div style={{ padding: "20px", maxWidth: 900, margin: "0 auto" }}>
-          {/* Section progress bar */}
-          {(() => {
-            const prog = getSectionProgress(currentSection);
-            const stime = getSectionTime(currentSection);
-            return (
-              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16, marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-                    <span>{prog.done} of {prog.total} done</span>
-                    <span style={{ color: currentSection.color, fontWeight: 600 }}>{prog.pct}%</span>
+        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "24px", padding: "24px", maxWidth: "1400px", margin: "0 auto", height: "calc(100vh - 70px)", overflow: "hidden" }}>
+          {/* Left Column: Vertical timeline list of topics */}
+          <div style={{ display: "flex", flexDirection: "column", background: "var(--bg-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", overflow: "hidden" }}>
+            {/* Header / Info */}
+            <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)" }}>
+              {(() => {
+                const prog = getSectionProgress(currentSection);
+                const stime = getSectionTime(currentSection);
+                return (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+                      <span>{prog.done} of {prog.total} completed</span>
+                      <span style={{ color: currentSection.color, fontWeight: 600 }}>{prog.pct}%</span>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 3, height: 5, overflow: "hidden", marginBottom: 8 }}>
+                      <div style={{ height: "100%", borderRadius: 3, background: currentSection.color, width: `${prog.pct}%`, transition: "width 0.3s" }} />
+                    </div>
+                    {stime > 0 && <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>⏱ Total Study Time: {formatTime(stime)}</div>}
                   </div>
-                  <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 3, height: 5, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 3, background: currentSection.color, width: `${prog.pct}%`, transition: "width 0.3s" }} />
+                );
+              })()}
+            </div>
+            
+            {/* Vertical timeline items */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px", position: "relative" }}>
+              {currentSection.topics.map((topic, index) => {
+                const isSelected = selectedTopicId === topic.id;
+                const status = getStatus(topic.id);
+                const isCompleted = status === "done";
+                const isProgress = status === "in-progress";
+                const isRevision = status === "needs-revision";
+                
+                return (
+                  <div key={topic.id} style={{ display: "flex", gap: "12px", cursor: "pointer", position: "relative" }} onClick={() => setSelectedTopicId(topic.id)}>
+                    {/* Vertical connecting line */}
+                    {index < currentSection.topics.length - 1 && (
+                      <div style={{
+                        position: "absolute",
+                        left: "10px",
+                        top: "22px",
+                        bottom: "-22px",
+                        width: "2px",
+                        background: "var(--border-color)",
+                        zIndex: 1
+                      }} />
+                    )}
+                    
+                    {/* Crisp step icon */}
+                    <div style={{
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "50%",
+                      background: isCompleted ? "var(--color-success)" : isProgress ? "#f59e0b" : isRevision ? "#8b5cf6" : "var(--bg-primary)",
+                      border: `2px solid ${isCompleted ? "var(--color-success)" : isProgress ? "#f59e0b" : isRevision ? "#8b5cf6" : "var(--border-color)"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "11px",
+                      color: isCompleted || isProgress || isRevision ? "#fff" : "transparent",
+                      zIndex: 2,
+                      flexShrink: 0,
+                      marginTop: "2px"
+                    }}>
+                      {isCompleted ? "✓" : isProgress ? "●" : isRevision ? "↺" : ""}
+                    </div>
+                    
+                    {/* Topic text */}
+                    <div style={{
+                      flex: 1,
+                      padding: "4px 8px",
+                      borderRadius: "var(--radius-sm)",
+                      background: isSelected ? "var(--accent-gold-glow)" : "transparent",
+                      border: isSelected ? "1px solid var(--accent-gold)" : "1px solid transparent",
+                      color: isSelected ? "var(--text-primary)" : isCompleted ? "var(--text-secondary)" : "var(--text-muted)",
+                      opacity: isCompleted ? 0.85 : 1,
+                      fontWeight: isSelected ? 600 : 400,
+                      fontSize: "13px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      transition: "all 0.2s"
+                    }}>
+                      {topic.title}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Right Column: Contextual details */}
+          <div style={{ display: "flex", flexDirection: "column", background: "var(--bg-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", overflow: "hidden" }}>
+            {selectedTopic ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {/* Header with Title & Main Timer */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,0,0,0.1)" }}>
+                  <div style={{ minWidth: 0, flex: 1, marginRight: "16px" }}>
+                    <div style={{ fontSize: "11px", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.05em", fontWeight: 600 }}>Active Topic</div>
+                    <h2 style={{ fontSize: "16px", fontWeight: 600, margin: "2px 0 0 0", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {selectedTopic.title}
+                    </h2>
+                  </div>
+                  
+                  {/* Topic Timer Panel */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-color)", fontSize: "12px" }}>
+                      <span style={{ color: "var(--text-muted)" }}>⏱</span>
+                      <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                        {timerTopicId === selectedTopic.id && timerRunning ? formatTime(timerSeconds) : formatTime(getTime(selectedTopic.id))}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={() => startTimer(selectedTopic.id)}
+                      style={{
+                        background: timerTopicId === selectedTopic.id && timerRunning ? "#451a03" : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${timerTopicId === selectedTopic.id && timerRunning ? "#f59e0b" : "var(--border-color)"}`,
+                        color: timerTopicId === selectedTopic.id && timerRunning ? "#f59e0b" : "var(--text-primary)",
+                        borderRadius: 6,
+                        padding: "5px 12px",
+                        fontSize: "12px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {timerTopicId === selectedTopic.id && timerRunning ? "Stop" : "Study"}
+                    </button>
+                    
+                    <button
+                      onClick={() => cycleStatus(selectedTopic.id)}
+                      style={{
+                        background: STATUS_CONFIG[getStatus(selectedTopic.id)].bg,
+                        border: `1px solid ${STATUS_CONFIG[getStatus(selectedTopic.id)].color}`,
+                        color: STATUS_CONFIG[getStatus(selectedTopic.id)].color,
+                        borderRadius: 6,
+                        padding: "5px 12px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        fontWeight: 500
+                      }}
+                    >
+                      {STATUS_CONFIG[getStatus(selectedTopic.id)].label}
+                    </button>
                   </div>
                 </div>
-                {stime > 0 && <span style={{ fontFamily: "monospace", fontSize: 13, color: "var(--text-secondary)" }}>⏱ {formatTime(stime)} total</span>}
-              </div>
-            );
-          })()}
-
-          {/* Topics */}
-          <div style={{ display: "grid", gap: 10 }}>
-            {currentSection.topics.map((topic) => {
-              const isExpanded = expandedTopic === topic.id;
-              const status = getStatus(topic.id);
-              const sc = STATUS_CONFIG[status];
-              const ttime = getTime(topic.id);
-              const isActiveTimer = timerTopicId === topic.id && timerRunning;
-
-              return (
-                <div key={topic.id} style={{ background: "var(--bg-secondary)", border: `1px solid ${isExpanded ? "var(--border-color)" : "transparent"}`, borderRadius: 10, overflow: "hidden" }}>
-                  {/* Topic header row */}
-                  <div className="topic-row"
-                    style={{ display: "flex", alignItems: "center", padding: "14px 16px", gap: 12, cursor: "pointer", background: "var(--bg-secondary)" }}
-                    onClick={() => setExpandedTopic(isExpanded ? null : topic.id)}>
-
-                    {/* Status button */}
-                    <button className="btn-status"
-                      onClick={e => { e.stopPropagation(); cycleStatus(topic.id); }}
-                      style={{
-                        background: sc.bg,
-                        border: `1px solid ${sc.color}`,
-                        color: sc.color,
-                        borderRadius: 6,
-                        padding: "4px 8px",
-                        fontSize: 12,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4
-                      }}>
-                      <span>{sc.icon}</span>
-                      <span>{sc.label}</span>
-                    </button>
-
-                    {/* Topic Title */}
-                    <div style={{ flex: 1, fontWeight: 600 }}>{topic.title}</div>
-
-                    {/* Timer controls */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
-                      {ttime > 0 && (
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)", fontFamily: "monospace" }}>
-                          {formatTime(ttime)}
-                        </span>
-                      )}
-                      <button 
-                        onClick={() => startTimer(topic.id)}
-                        style={{
-                          background: isActiveTimer ? "#451a03" : "rgba(255,255,255,0.05)",
-                          border: `1px solid ${isActiveTimer ? "#f59e0b" : "var(--border-color)"}`,
-                          color: isActiveTimer ? "#f59e0b" : "var(--text-secondary)",
-                          borderRadius: 6,
-                          padding: "4px 8px",
-                          fontSize: 12,
-                          cursor: "pointer",
-                          fontFamily: "monospace"
-                        }}
-                      >
-                        {isActiveTimer ? "⏹ Stop" : "⏱ Start"}
-                      </button>
-                    </div>
-
-                    <div style={{ color: "var(--text-secondary)", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
-                      ›
-                    </div>
-                  </div>
-
-                  {/* Subtopics list */}
-                  {isExpanded && (
-                    <div style={{ borderTop: "1px solid var(--border-color)", background: "rgba(0,0,0,0.15)", padding: "8px 16px" }}>
-                      {topic.subtopics.map((subtopic, subIdx) => {
-                        const subId = `${topic.id}_sub_${subIdx}`;
+                
+                {/* Scrollable Body */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "24px" }}>
+                  {/* Subtopics Checklist */}
+                  <div>
+                    <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "12px", letterSpacing: "0.02em" }}>Subtopics & Core Concepts</h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(0,0,0,0.15)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", padding: "12px" }}>
+                      {selectedTopic.subtopics.map((subtopic, subIdx) => {
+                        const subId = `${selectedTopic.id}_sub_${subIdx}`;
                         const subStatus = getStatus(subId);
-                        const subConfig = STATUS_CONFIG[subStatus];
                         const subTime = getTime(subId);
                         const isSubActiveTimer = timerTopicId === subId && timerRunning;
-
+                        
                         return (
-                          <div key={subIdx} className="sub-row"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              padding: "8px 0",
-                              gap: 12,
-                              borderBottom: subIdx < topic.subtopics.length - 1 ? "1px solid var(--border-color)" : "none"
-                            }}>
-                            {/* Subtopic Status checkbox */}
-                            <button className="btn-status"
+                          <div key={subIdx} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: subIdx < selectedTopic.subtopics.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
+                            <button
                               onClick={() => cycleStatus(subId)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: subConfig.color,
-                                cursor: "pointer",
-                                fontSize: 14,
-                                padding: 0
-                              }}>
-                                {subConfig.icon}
+                              style={{ background: "none", border: "none", color: STATUS_CONFIG[subStatus].color, cursor: "pointer", fontSize: "14px", padding: 0 }}
+                            >
+                              {STATUS_CONFIG[subStatus].icon}
                             </button>
-
-                            {/* Subtopic Title */}
-                            <div style={{ flex: 1, color: subStatus === "done" ? "var(--text-secondary)" : "var(--text-primary)", textDecoration: subStatus === "done" ? "line-through" : "none", fontSize: 13 }}>
+                            
+                            <div style={{ flex: 1, fontSize: "13px", color: subStatus === "done" ? "var(--text-muted)" : "var(--text-primary)", textDecoration: subStatus === "done" ? "line-through" : "none" }}>
                               {subtopic}
                             </div>
-
+                            
                             {/* Subtopic Timer controls */}
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                               {subTime > 0 && (
-                                <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "monospace" }}>
+                                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "monospace" }}>
                                   {formatTime(subTime)}
                                 </span>
                               )}
-                              <button 
+                              <button
                                 onClick={() => startTimer(subId)}
                                 style={{
                                   background: isSubActiveTimer ? "#451a03" : "rgba(0,0,0,0.2)",
                                   border: `1px solid ${isSubActiveTimer ? "#f59e0b" : "var(--border-color)"}`,
                                   color: isSubActiveTimer ? "#f59e0b" : "var(--text-secondary)",
                                   borderRadius: 4,
-                                  padding: "2px 6px",
-                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  fontSize: "11px",
                                   cursor: "pointer",
                                   fontFamily: "monospace"
                                 }}
                               >
-                                {isSubActiveTimer ? "⏹ Stop" : "⏱ Start"}
+                                {isSubActiveTimer ? "Stop" : "Timer"}
                               </button>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  )}
+                  </div>
+                  
+                  {/* Seeker Notes Area */}
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "220px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>Seeker's Sadhana Notes</label>
+                      <button onClick={saveNotes} style={{ background: "var(--accent-gold-glow)", border: "1px solid var(--accent-gold)", color: "var(--text-primary)", padding: "4px 12px", borderRadius: 4, fontSize: "12px", cursor: "pointer" }}>
+                        Save Notes
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Write your notes, code examples, understanding, or queries for this topic here..."
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      style={{
+                        flex: 1,
+                        width: "100%",
+                        minHeight: "150px",
+                        background: "rgba(0,0,0,0.25)",
+                        border: "1px solid var(--border-color)",
+                        color: "var(--text-primary)",
+                        padding: "12px",
+                        borderRadius: "var(--radius-sm)",
+                        fontFamily: "monospace",
+                        fontSize: "13px",
+                        resize: "none",
+                        lineHeight: 1.5
+                      }}
+                    />
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                Select a topic from the left timeline to begin studying.
+              </div>
+            )}
           </div>
         </div>
       )}
