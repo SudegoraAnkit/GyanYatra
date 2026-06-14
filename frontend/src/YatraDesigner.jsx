@@ -167,7 +167,7 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
       </div>
 
       {/* Curriculum Nodes Editor & Drawer */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px", marginBottom: "32px", minHeight: "450px" }}>
+      <div className="yatra-designer-container">
         
         {/* Canvas Area */}
         <div style={{ display: "flex", flexDirection: "column" }}>

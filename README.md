@@ -145,3 +145,19 @@ The core ledger tracking user logs, AI-extracted concepts, gap recommendations, 
 *   **Context**: High-contrast light modes cause eye strain during late-night study sessions.
 *   **Decision**: Build a low-contrast, warm Zen-themed light mode (warm ivory backgrounds, sand/clay card cards, deep golden ochre highlights) toggled via CSS variables.
 *   **Consequences**: Enables comfortable long-duration studying without visual fatigue across both light and dark modes.
+
+---
+
+## 🗺️ Product Feature Roadmap
+
+### Milestone 3: Advanced Spaced Repetition (SM-2 Algorithm)
+- Integrate custom card and concept review schedules on the user study timeline.
+- Implement equations for custom review intervals based on qualitative difficulty feedback inputs.
+
+### Milestone 4: Text-to-Speech (TTS) Narration
+- Enable auditory synthesizers using Google Cloud TTS API to read aloud Acharya meditation evaluations.
+- Stream generated audio directly to seeker clients during study reviews.
+
+### Milestone 5: Collaborative Study Circles
+- Form custom study groups/circles allowing multiple seekers to share collaborative SatsangYatra progress.
+- Enable mutual goal validations and community progress achievements.

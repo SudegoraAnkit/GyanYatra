@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Play, Clock, CheckCircle, Send, Loader, ExternalLink, Sparkles, Edit, BookOpen, ChevronDown, ChevronRight, Eye, RefreshCw, Award, Volume2, X } from "lucide-react";
+import { TypewriterText } from "./App";
 
 export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -18,6 +19,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [quizAnswers, setQuizAnswers] = useState(["", "", ""]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("sadhana"); // "sadhana" or "chat"
+  const [justMeditatedTopicId, setJustMeditatedTopicId] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -245,6 +247,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
         const updatedNode = findNode(updated.topics);
         if (updatedNode) {
           setSelectedTopic(updatedNode);
+          setJustMeditatedTopicId(selectedTopic.id);
         }
         onUpdate(updated); // Update root state
         setQuizSubmitted(false);
@@ -403,9 +406,9 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   };
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 60px)", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+    <div className="yatra-tracker-container">
       {/* Sidebar: Topic tree */}
-      <div style={{ width: "320px", borderRight: "1px solid var(--border-color)", display: "flex", flexDirection: "column", background: "var(--bg-secondary)" }}>
+      <div className="yatra-tracker-sidebar">
         <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)" }}>
           <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
             ← Back to Gallery
@@ -441,7 +444,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       </div>
 
       {/* Main Panel: Topic Study Space */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="yatra-tracker-body">
         {selectedTopic ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {/* Topic Header & Timer */}
@@ -482,9 +485,9 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
             </div>
 
             {/* Split Screen Workspace */}
-            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            <div className="yatra-tracker-main">
               {/* Left Column: Media & Notes */}
-              <div style={{ flex: 1.2, borderRight: "1px solid var(--border-color)", display: "flex", flexDirection: "column", overflowY: "auto", padding: "20px" }}>
+              <div className="yatra-tracker-left-pane">
                 
                 {/* Embedded YouTube Frame */}
                 {videoId ? (
@@ -538,7 +541,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
               </div>
 
               {/* Right Column: AI Acharya panel */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div className="yatra-tracker-right-pane">
                 
                 {/* Tabs */}
                 <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", background: "var(--bg-secondary)" }}>
@@ -577,7 +580,11 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                             
                             {/* Sanskrit quote display */}
                             <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-primary)", fontStyle: "italic", margin: 0 }}>
-                              {selectedTopic.aiAnalysis.feedback}
+                              {selectedTopic.id === justMeditatedTopicId ? (
+                                <TypewriterText text={selectedTopic.aiAnalysis.feedback} />
+                              ) : (
+                                selectedTopic.aiAnalysis.feedback
+                              )}
                             </p>
                           </div>
 
@@ -709,7 +716,11 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                         {chatHistory.map((msg, i) => (
                           <div key={i} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%", padding: "10px 12px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: msg.role === "user" ? "var(--color-primary-glow)" : "rgba(255,255,255,0.03)", border: msg.role === "user" ? "1px solid var(--color-primary)" : "1px solid var(--border-color)", whiteSpace: "pre-wrap" }}>
                             <strong>{msg.role === "user" ? "Seeker: " : "Acharya: "}</strong>
-                            {msg.content}
+                            {msg.role === "assistant" && i === chatHistory.length - 1 ? (
+                              <TypewriterText text={msg.content} />
+                            ) : (
+                              msg.content
+                            )}
                           </div>
                         ))}
                         {chatLoading && (

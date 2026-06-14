@@ -51,6 +51,9 @@ public class JournalController {
      */
     @PostMapping
     public ResponseEntity<Journal> createWisdomLog(@RequestBody JournalRequest request) {
+        if (request.userNotes() == null || request.userNotes().trim().isEmpty()) {
+            throw new GyanYatraException("Notes are mandatory to log wisdom.", "GY-4-0", HttpStatus.BAD_REQUEST);
+        }
         Journal journal = Journal.builder()
                 .userId(request.userId())
                 .videoUrl(request.videoUrl())
@@ -77,6 +80,9 @@ public class JournalController {
                 throw new GyanYatraException("Journal Not Found", "GY-4-4", HttpStatus.BAD_REQUEST);
             }
             Journal journal = journalOpt.get();
+            if (journal.getUserNotes() == null || journal.getUserNotes().trim().isEmpty()) {
+                throw new GyanYatraException("Notes are mandatory to begin Acharya Meditation.", "GY-4-0", HttpStatus.BAD_REQUEST);
+            }
 
             if (simulate) {
                 log.info("Evaluating log {} locally to preserve AI token quota", journalId);

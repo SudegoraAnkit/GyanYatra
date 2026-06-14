@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/yatra/yatras")
+@RequestMapping("/api/v1/yatras")
 @RequiredArgsConstructor
 @Slf4j
 public class SatsangYatraController {
@@ -111,6 +111,9 @@ public class SatsangYatraController {
         com.ankitsudegora.gyanyatra.core.model.YatraTopic target = yatraService.findTopicInYatra(yatra, topicId);
         if (target == null) {
             throw new GyanYatraException("Topic not found inside Yatra", "GY-4-4", HttpStatus.NOT_FOUND);
+        }
+        if (target.getUserNotes() == null || target.getUserNotes().trim().isEmpty()) {
+            throw new GyanYatraException("Notes are mandatory to begin Acharya Meditation.", "GY-4-0", HttpStatus.BAD_REQUEST);
         }
 
         com.ankitsudegora.gyanyatra.core.model.Journal mockJournal = com.ankitsudegora.gyanyatra.core.model.Journal.builder()
