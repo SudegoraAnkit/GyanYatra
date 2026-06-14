@@ -505,7 +505,7 @@ export default function Tracker({ user, onRoadmapUpdate }) {
       )}
 
       {view === "section" && currentSection && (
-        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "24px", padding: "24px", maxWidth: "1400px", margin: "0 auto", height: "calc(100vh - 70px)", overflow: "hidden" }}>
+        <div className="tracker-section-container">
           {/* Left Column: Vertical timeline list of topics */}
           <div style={{ display: "flex", flexDirection: "column", background: "var(--bg-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-color)", overflow: "hidden" }}>
             {/* Header / Info */}

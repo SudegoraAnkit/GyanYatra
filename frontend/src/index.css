@@ -35,10 +35,10 @@
 }
 
 :root[data-theme="light"] {
-  --bg-primary: #f9fafb; /* Soft Neutral Off-White */
-  --bg-secondary: #f3f4f6; /* Soft neutral grey secondary */
-  --bg-card: #ffffff; /* Pure Card White */
-  --bg-card-hover: #f9fafb;
+  --bg-primary: #f1f5f9; /* Soft Slate-Cream base background */
+  --bg-secondary: #e2e8f0; /* Muted Slate secondary */
+  --bg-card: #ffffff; /* Card Soft Slate-White */
+  --bg-card-hover: #f8fafc;
   
   --accent-gold: #059669; /* Elegant Emerald progress accent */
   --accent-gold-glow: rgba(5, 150, 105, 0.15);
@@ -52,12 +52,12 @@
   --color-danger: #dc2626;
   --color-info: #0891b2;
   
-  --text-primary: #1e293b; /* Dark slate text */
+  --text-primary: #334155; /* Soft charcoal primary text */
   --text-secondary: #475569; /* Slate secondary */
   --text-muted: #64748b;
   
-  --border-color: #e5e7eb; /* Subtle muted divider */
-  --border-hover: #d1d5db;
+  --border-color: #cbd5e1; /* Clearer muted divider */
+  --border-hover: #94a3b8;
 }
 
 * {
@@ -1229,10 +1229,7 @@ body {
 }
 
 .heatmap-grid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 10px;
-  grid-template-rows: repeat(7, 10px);
+  display: flex;
   gap: 3px;
   height: 88px;
 }
@@ -2227,5 +2224,86 @@ body {
 
 :root[data-theme="light"] .calendar-cell.streak-active .cell-marker.streak-flame {
   color: #d97706 !important;
+}
+
+/* Responsive Layout Containers */
+.tracker-section-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: calc(100vh - 70px);
+  overflow: hidden;
+}
+
+.yatra-tracker-container {
+  display: flex;
+  height: calc(100vh - 60px);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.yatra-designer-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  margin-bottom: 32px;
+  min-height: 450px;
+}
+
+@media (max-width: 768px) {
+  .tracker-section-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+    padding: 12px;
+    gap: 16px;
+  }
+  
+  .yatra-tracker-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+  
+  .yatra-tracker-container > div:first-child {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .yatra-tracker-container > div:last-child {
+    flex: none !important;
+  }
+  
+  .yatra-tracker-container .yatra-tracker-main {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .yatra-tracker-container .yatra-tracker-left-pane {
+    flex: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    overflow-y: visible !important;
+  }
+  
+  .yatra-tracker-container .yatra-tracker-right-pane {
+    flex: none !important;
+    height: 500px !important;
+    overflow: visible !important;
+  }
+  
+  .yatra-designer-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    min-height: auto;
+  }
 }
 

@@ -42,6 +42,26 @@ const getLocalYMD = (dateInput) => {
   return `${y}-${m}-${day}`
 }
 
+export const TypewriterText = ({ text, speed = 12 }) => {
+  const [displayedText, setDisplayedText] = useState('')
+
+  useEffect(() => {
+    let index = 0
+    setDisplayedText('')
+    if (!text) return
+    const interval = setInterval(() => {
+      setDisplayedText((prev) => prev + text.charAt(index))
+      index++
+      if (index >= text.length) {
+        clearInterval(interval)
+      }
+    }, speed)
+    return () => clearInterval(interval)
+  }, [text, speed])
+
+  return <>{displayedText}</>
+}
+
 
 // ==========================================================================
 // DYNAMIC STREAK CALCULATIONS
@@ -623,6 +643,7 @@ function App() {
   // Error/Success alerts
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [lastAnalyzedJournalId, setLastAnalyzedJournalId] = useState(null)
 
   const pollingRef = useRef(null)
 
@@ -964,6 +985,7 @@ function App() {
           setActiveJournalId(null)
           
           setExpandedJournalId(journalId)
+          setLastAnalyzedJournalId(journalId)
           
           // Refresh user data
           fetchUserProfile(user.id, user.token)
@@ -991,8 +1013,48 @@ function App() {
     }
     setErrorMsg('')
     setSuccessMsg('')
+
+    // Bypass check: If cache has a valid token matching this email, try direct login first
+    const savedUserStr = localStorage.getItem('gyanyatra_user')
+    if (savedUserStr) {
+      try {
+        const parsed = JSON.parse(savedUserStr)
+        if (parsed.email && parsed.email.trim().toLowerCase() === regEmail.trim().toLowerCase() && parsed.token && parsed.id) {
+          setIsGeneratingOtp(true)
+          const res = await fetch(`${API_BASE}/yatra/users/${parsed.id}`, {
+            headers: {
+              'Authorization': `Bearer ${parsed.token}`
+            }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            const updatedUser = { ...data, token: parsed.token }
+            setUser(updatedUser)
+            loadAndMergeRoadmap(data.roadmapData)
+            setEditName(data.name || '')
+            setEditBio(data.bio || 'Passionate Seeker on the GyanYatra.')
+            setEditSkills(data.additionalSkills || [])
+            setEditPersona(data.acharyaPersona || 'dronacharya')
+            
+            localStorage.setItem('gyanyatra_user', JSON.stringify(updatedUser))
+            fetchSeekerJournals(data.id, parsed.token)
+            updateStreakCount(data.id)
+            fetchLeaderboard()
+            
+            setSuccessMsg("Logged in automatically via cached credentials!")
+            setTimeout(() => setSuccessMsg(''), 5000)
+            setIsGeneratingOtp(false)
+            return
+          }
+        }
+      } catch (err) {
+        console.error("Cached direct login failed:", err)
+      } finally {
+        setIsGeneratingOtp(false)
+      }
+    }
+
     setIsGeneratingOtp(true)
-    
     try {
       const res = await fetch(`${API_BASE}/yatra/users/login/otp/generate?email=${encodeURIComponent(regEmail)}`, {
         method: 'POST'
@@ -1180,7 +1242,11 @@ function App() {
   // Submit log to Acharya for Meditation (Requires JWT)
   const handleSubmitLog = async (e) => {
     e.preventDefault()
-    if (!user || !videoUrl.trim() || !userNotes.trim()) return
+    if (!user || !videoUrl.trim()) return
+    if (!userNotes.trim()) {
+      setErrorMsg("Notes are mandatory to begin Acharya Meditation.")
+      return
+    }
     setErrorMsg('')
     setSuccessMsg('')
     setIsSubmittingJournal(true)
@@ -1782,6 +1848,18 @@ function App() {
       userJournals.map(j => getLocalYMD(j.createdAt))
     );
 
+    const startLimit = (() => {
+      if (user && user.createdAt) {
+        const d = new Date(user.createdAt);
+        if (!isNaN(d.getTime())) return d;
+      }
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() - 30);
+      return fallback;
+    })();
+    const getOnlyDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const limitDateOnly = getOnlyDate(startLimit);
+
     const daysGrid = [];
     // Empty slots for padding before the first day of the month
     for (let i = 0; i < startDayOfWeek; i++) {
@@ -1795,9 +1873,11 @@ function App() {
       const hasStudied = studyDates.has(dateStr);
       const isFuture = checkDate > now;
       const isToday = dateStr === getLocalYMD(now);
+      const checkDateOnly = getOnlyDate(checkDate);
       
       let status = 'missed';
       if (hasStudied) status = 'completed';
+      else if (checkDateOnly < limitDateOnly) status = 'before-start';
       else if (isToday && !hasStudied) status = 'today-pending';
       else if (isFuture) status = 'future';
 
@@ -1818,8 +1898,8 @@ function App() {
         </div>
         <div className="calendar-grid-days">
           {daysGrid.map((cell, idx) => {
-            if (cell.status === 'empty') {
-              return <div key={idx} className="calendar-cell empty" />;
+            if (cell.status === 'empty' || cell.status === 'before-start') {
+              return <div key={idx} className="calendar-cell empty" title={cell.status === 'before-start' ? "Prior to registration" : ""} />;
             }
             return (
               <div 
@@ -1908,44 +1988,90 @@ function App() {
     );
   };
 
-  // Year Months Grid Progress
-  const renderYearProgress = (userJournals) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    const activeMonths = new Set(
-      userJournals.map(j => {
-        const d = safeParseDate(j.createdAt);
-        if (d && d.getFullYear() === year) {
-          return d.getMonth();
-        }
-        return null;
-      }).filter(m => m !== null)
+  // Daily Progress Grid (Last 30 Days)
+  const renderDailyProgress = (userJournals) => {
+    const studyDates = new Set(
+      userJournals.map(j => getLocalYMD(j.createdAt))
     );
+    const now = new Date();
+    const startLimit = (() => {
+      if (user && user.createdAt) {
+        const d = new Date(user.createdAt);
+        if (!isNaN(d.getTime())) return d;
+      }
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() - 30);
+      return fallback;
+    })();
+    const getOnlyDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const limitDateOnly = getOnlyDate(startLimit);
+
+    const last30Days = [];
+    for (let i = 29; i >= 0; i--) {
+      const checkDate = new Date();
+      checkDate.setDate(now.getDate() - i);
+      const dateStr = getLocalYMD(checkDate);
+      const checkDateOnly = getOnlyDate(checkDate);
+      const hasStudied = studyDates.has(dateStr);
+      const isFuture = checkDateOnly > getOnlyDate(now);
+
+      let status = 'missed';
+      if (hasStudied) {
+        status = 'completed';
+      } else if (isFuture) {
+        status = 'future';
+      } else if (checkDateOnly < limitDateOnly) {
+        status = 'before-start';
+      }
+
+      last30Days.push({
+        date: checkDate,
+        dateStr,
+        status
+      });
+    }
 
     return (
-      <div className="streak-year-view">
-        <h3 className="calendar-year-title">
-          Year Overview: {year}
+      <div className="streak-daily-view">
+        <h3 className="calendar-daily-title" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>
+          Daily Progress (Last 30 Days)
         </h3>
-        <div className="streak-year-grid">
-          {monthNames.map((name, idx) => {
-            const hasStudied = activeMonths.has(idx);
-            const isFuture = idx > now.getMonth();
-            const isCurrent = idx === now.getMonth();
-            
-            let status = 'missed';
-            if (hasStudied) status = 'completed';
-            else if (isFuture) status = 'future';
-            else if (isCurrent) status = 'today-pending';
-
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', maxHeight: '320px', overflowY: 'auto', padding: '4px' }}>
+          {last30Days.map((day, idx) => {
+            const formattedDate = day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
             return (
-              <div key={idx} className={`month-card ${status} ${isCurrent ? 'current' : ''}`}>
-                <span className="month-name">{name}</span>
-                <div className="month-status-desc">
-                  {status === 'completed' ? 'Graded ✓' : status === 'future' ? 'Locked' : 'Missed ✗'}
-                </div>
+              <div 
+                key={idx} 
+                className={`daily-cell ${day.status}`}
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  padding: '10px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  background: 'var(--bg-secondary)', 
+                  border: '1px solid var(--border-color)',
+                  opacity: day.status === 'before-start' ? 0.35 : 1
+                }}
+                title={
+                  day.status === 'completed' ? `Studied on ${day.dateStr}` :
+                  day.status === 'before-start' ? `Before registration start date` :
+                  day.status === 'future' ? `Yet to study` : `Missed study on ${day.dateStr}`
+                }
+              >
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px' }}>{formattedDate}</span>
+                {day.status === 'completed' ? (
+                  <Flame size={20} fill="var(--accent-gold)" style={{ color: 'var(--accent-gold)' }} />
+                ) : day.status === 'before-start' ? (
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', height: '20px', display: 'flex', alignItems: 'center' }}>N/A</span>
+                ) : day.status === 'future' ? (
+                  <Flame size={20} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+                ) : (
+                  <Flame size={20} style={{ color: 'var(--text-muted)' }} />
+                )}
+                <span style={{ fontSize: '9px', marginTop: '4px', textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
+                  {day.status === 'completed' ? 'Active' : day.status === 'before-start' ? 'N/A' : day.status === 'future' ? 'Yet to study' : 'Missed'}
+                </span>
               </div>
             );
           })}
@@ -2872,7 +2998,13 @@ function App() {
                                 
                                 <div className="insight-section">
                                   <span className="insight-section-title">Acharya Feedback</span>
-                                  <p className="insight-feedback" style={{ fontSize: '0.85rem' }}>{journal.aiAnalysis.feedback}</p>
+                                  <p className="insight-feedback" style={{ fontSize: '0.85rem' }}>
+                                    {journal.id === lastAnalyzedJournalId ? (
+                                      <TypewriterText text={journal.aiAnalysis.feedback} />
+                                    ) : (
+                                      journal.aiAnalysis.feedback
+                                    )}
+                                  </p>
                                 </div>
                                 
                                 {journal.aiAnalysis.identifiedConcepts && journal.aiAnalysis.identifiedConcepts.length > 0 && (
@@ -3191,17 +3323,17 @@ function App() {
                   Month View (Calendar)
                 </button>
                 <button 
-                  className={`tab-btn ${activeStreakTab === 'year' ? 'active' : ''}`}
-                  onClick={() => setActiveStreakTab('year')}
+                  className={`tab-btn ${activeStreakTab === 'daily' ? 'active' : ''}`}
+                  onClick={() => setActiveStreakTab('daily')}
                 >
-                  Year View
+                  Daily View
                 </button>
               </div>
 
               <div className="streak-modal-body" style={{ marginTop: '1.25rem' }}>
                 {activeStreakTab === 'week' && renderWeekProgress(journals)}
                 {activeStreakTab === 'month' && renderMonthCalendar(journals)}
-                {activeStreakTab === 'year' && renderYearProgress(journals)}
+                {activeStreakTab === 'daily' && renderDailyProgress(journals)}
               </div>
 
               <div className="text-center" style={{ marginTop: '1.5rem' }}>

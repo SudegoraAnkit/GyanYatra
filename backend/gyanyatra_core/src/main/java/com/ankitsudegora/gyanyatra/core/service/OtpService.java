@@ -90,7 +90,10 @@ public class OtpService {
             message.setFrom(fromEmail);
             message.setTo(email);
             message.setSubject("GyanYatra Seeker Security Verification");
-            message.setText("Welcome to GyanYatra!\n\nYour security verification OTP code is: " + otp + "\n\nThis code will expire in 5 minutes.\n\nPath of Knowledge.");
+            message.setText("Welcome to GyanYatra!\n\nYour security verification OTP code is: " + otp + "\n\n" +
+                    "To access the application, please visit: http://localhost:5173\n\n" +
+                    "This code will expire in 5 minutes. If you did not request this verification code, please ignore this email.\n\n" +
+                    "Path of Knowledge.");
             mailSender.send(message);
             log.info("OTP email successfully sent to: {} via SMTP", email);
         } catch (Exception e) {
@@ -102,7 +105,7 @@ public class OtpService {
         log.info("Attempting to send OTP email via Brevo HTTP API to: {}", email);
         try {
             String jsonPayload = String.format(
-                "{\"sender\":{\"name\":\"GyanYatra\",\"email\":\"%s\"},\"to\":[{\"email\":\"%s\",\"name\":\"Seeker\"}],\"subject\":\"GyanYatra Seeker Security Verification\",\"htmlContent\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>This code will expire in 5 minutes.</p><p><i>Path of Knowledge.</i></p>\"}",
+                "{\"sender\":{\"name\":\"GyanYatra\",\"email\":\"%s\"},\"to\":[{\"email\":\"%s\",\"name\":\"Seeker\"}],\"subject\":\"GyanYatra Seeker Security Verification\",\"htmlContent\":\"<p>Welcome to GyanYatra!</p><p>Your security verification OTP code is: <strong>%s</strong></p><p>To access the application, please visit: <a href=\\\"http://localhost:5173\\\">http://localhost:5173</a></p><p>This code will expire in 5 minutes. If you did not request this verification code, please ignore this email.</p><p><i>Path of Knowledge.</i></p>\"}",
                 brevoSenderEmail, email, otp
             );
 
