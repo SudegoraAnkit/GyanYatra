@@ -354,11 +354,12 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const YatraTreeNode = ({ node, depth = 0 }) => {
     const isCollapsed = collapsedNodes[node.id];
     const hasChildren = node.subtopics && node.subtopics.length > 0;
-    const statusCfg = getStatusConfig(node.status);
     const isSelected = selectedTopic && selectedTopic.id === node.id;
+    const isCompleted = node.status === "done";
+    const isProgress = node.status === "in-progress";
 
     return (
-      <div style={{ marginLeft: depth > 0 ? "16px" : "0", borderLeft: depth > 0 ? "1px dashed var(--border-color)" : "none", paddingLeft: depth > 0 ? "12px" : "0" }}>
+      <div style={{ marginLeft: depth > 0 ? "16px" : "0", borderLeft: depth > 0 ? "2px solid var(--border-color)" : "none", paddingLeft: depth > 0 ? "12px" : "0" }}>
         <div style={{ display: "flex", gap: "8px", alignItems: "center", padding: "6px 8px", borderRadius: "var(--radius-sm)", background: isSelected ? "var(--accent-gold-glow)" : "transparent", border: isSelected ? "1px solid var(--accent-gold)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s" }}>
           
           {hasChildren ? (
@@ -369,11 +370,17 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
             <div style={{ width: 14 }} />
           )}
 
-          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", color: statusCfg.color, cursor: "pointer", fontSize: 13, fontWeight: 700, padding: "0 2px" }} title={`Status: ${statusCfg.label}. Click to cycle.`}>
-            {statusCfg.icon}
+          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", padding: "0 2px" }} title={`Status: ${node.status || "not-started"}. Click to cycle.`}>
+            {isCompleted ? (
+              <CheckCircle size={15} style={{ color: "var(--color-success)" }} />
+            ) : isProgress ? (
+              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+            ) : (
+              <span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid var(--text-muted)", display: "inline-block", background: "transparent", opacity: 0.5 }} />
+            )}
           </button>
 
-          <div onClick={() => selectTopic(node)} style={{ flex: 1, fontSize: 13, color: isSelected ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: isSelected ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div onClick={() => selectTopic(node)} style={{ flex: 1, fontSize: 13, color: isSelected ? "var(--text-primary)" : isCompleted ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: isSelected ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {node.title || "Untitled Topic"}
           </div>
 

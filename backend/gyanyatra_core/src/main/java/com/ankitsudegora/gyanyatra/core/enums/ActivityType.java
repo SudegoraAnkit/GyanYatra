@@ -4,5 +4,8 @@ public enum ActivityType {
     COMPLETED,
     INPROGRESS,
     TODO,
-    BOOKMARKED
+    BOOKMARKED,
+    WATCH_VIDEO,
+    READ_JOURNAL,
+    CREATE_CUSTOM_YATRA
 }
