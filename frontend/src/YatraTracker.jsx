@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Play, Clock, CheckCircle, Send, Loader, ExternalLink, Sparkles, Edit, BookOpen, ChevronDown, ChevronRight, Eye, RefreshCw, Award, Volume2, X, Maximize, Minimize } from "lucide-react";
-import { TypewriterText } from "./App";
+import { useState, useEffect } from "react";
+import { Play, Clock, Send, Loader, ExternalLink, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -19,8 +18,9 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [quizAnswers, setQuizAnswers] = useState(["", "", ""]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("sadhana"); // "sadhana" or "chat"
-  const [justMeditatedTopicId, setJustMeditatedTopicId] = useState(null);
-  const [isTheaterMode, setIsTheaterMode] = useState(false);
+  
+  // Custom Sidebar View State (Standard Split vs Wide Theater View)
+  const [isVistaraMode, setIsVistaraMode] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -47,10 +47,9 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     };
   }, [timerRunning]);
 
-  // Handle topic change
+  // Handle topic selection change
   const selectTopic = (topic) => {
     if (timerRunning) {
-      // Save current timer progress before switching
       saveTimeSpent(selectedTopic.id, timerSeconds);
       setTimerRunning(false);
       setTimerSeconds(0);
@@ -111,24 +110,16 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     return `${s}s`;
   };
 
-  const formatTargetDuration = (mins) => {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  };
-
   const getStatusConfig = (status) => {
     const config = {
       "not-started": { label: "Not Started", color: "#64748b", bg: "rgba(100,116,139,0.1)", icon: "○" },
-      "in-progress": { label: "In Progress", color: "#f39c12", bg: "rgba(243,156,18,0.15)", icon: "◑" },
+      "in-progress": { label: "In Progress", color: "#10b981", bg: "rgba(16,185,129,0.15)", icon: "◑" },
       "done": { label: "Done", color: "#10b981", bg: "rgba(16,185,129,0.15)", icon: "●" },
       "needs-revision": { label: "Revision", color: "#8b5cf6", bg: "rgba(139,92,246,0.15)", icon: "↺" }
     };
     return config[status] || config["not-started"];
   };
 
-  // Cycle topic status
   const cycleStatus = (topicId) => {
     const statusCycle = ["not-started", "in-progress", "done", "needs-revision"];
     let nextStatus = "not-started";
@@ -152,13 +143,11 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       onRecordStudy(topicId, nextStatus, 0);
     }
 
-    // Update selectedTopic status in state
     if (selectedTopic && selectedTopic.id === topicId) {
       setSelectedTopic(prev => ({ ...prev, status: nextStatus }));
     }
   };
 
-  // Auto-discover video title
   const discoverVideoTitle = async () => {
     if (!videoUrlInput) return;
     setIsDiscovering(true);
@@ -185,7 +174,6 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     }
   };
 
-  // Update specific topic fields and save
   const updateTopicField = (topicId, fields) => {
     const updateTree = (list) => {
       return list.map(item => {
@@ -202,16 +190,17 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     onUpdate(updatedYatra);
   };
 
-  // Save Notes and Video URL manually
-  const saveNotesAndVideo = () => {
-    updateTopicField(selectedTopic.id, {
-      userNotes: notesInput,
-      videoUrl: videoUrlInput
-    });
-    alert("Sadhana details successfully saved.");
+  // Keystroke Real-Time Auto-Save Triggers
+  const handleUrlChange = (val) => {
+    setVideoUrlInput(val);
+    updateTopicField(selectedTopic.id, { videoUrl: val });
   };
 
-  // Submit notes to Acharya for Meditation review
+  const handleNotesChange = (val) => {
+    setNotesInput(val);
+    updateTopicField(selectedTopic.id, { userNotes: val });
+  };
+
   const submitForMeditation = async () => {
     if (!notesInput.trim()) {
       alert("Please record some Sadhana notes before invoking the Acharya.");
@@ -219,51 +208,23 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     }
     setIsMeditating(true);
     try {
-      // Ensure notes/video URL are saved in the tree first
-      updateTopicField(selectedTopic.id, {
-        userNotes: notesInput,
-        videoUrl: videoUrlInput
-      });
-
       const persona = user.acharyaPersona || "dronacharya";
       const res = await fetch(`${API_BASE}/yatras/${yatra.id}/topics/${selectedTopic.id}/meditate?persona=${persona}&simulate=${simulateMeditation}`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${user.token}`
-        }
+        headers: { "Authorization": `Bearer ${user.token}` }
       });
       if (res.ok) {
         const updated = await res.json();
-        // Locate updated topic in the returned tree
-        const findNode = (list) => {
-          for (let item of list) {
-            if (item.id === selectedTopic.id) return item;
-            if (item.subtopics && item.subtopics.length > 0) {
-              const f = findNode(item.subtopics);
-              if (f) return f;
-            }
-          }
-          return null;
-        };
-        const updatedNode = findNode(updated.topics);
-        if (updatedNode) {
-          setSelectedTopic(updatedNode);
-          setJustMeditatedTopicId(selectedTopic.id);
-        }
-        onUpdate(updated); // Update root state
-        setQuizSubmitted(false);
-        setQuizAnswers(["", "", ""]);
-      } else {
-        alert("Acharya's meditation was interrupted. Please try again.");
+        onUpdate(updated);
+        alert("Acharya review completed successfully!");
       }
     } catch (e) {
-      console.error("Acharya review request failed:", e);
+      console.error(e);
     } finally {
       setIsMeditating(false);
     }
   };
 
-  // Chat with Acharya tutor
   const sendChatMessage = async () => {
     if (!chatMessage.trim()) return;
     const currentMsg = chatMessage;
@@ -296,13 +257,11 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       }
     } catch (e) {
       console.error("Tutor chat failed:", e);
-      setChatHistory(prev => [...prev, { role: "assistant", content: "Error connecting to Acharya. Check connection." }]);
     } finally {
       setChatLoading(false);
     }
   };
 
-  // Submit active recall quiz
   const handleQuizSubmit = async (e) => {
     e.preventDefault();
     if (quizAnswers.some(a => !a.trim())) {
@@ -320,14 +279,13 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       });
       if (res.ok) {
         setQuizSubmitted(true);
-        alert("Dhanyavaad! Active Recall quiz submitted. You are awarded +15 Karma points!");
+        alert("Dhanyavaad! You are awarded +15 Karma points!");
       }
     } catch (e) {
-      console.error("Failed to submit quiz karma:", e);
+      console.error(e);
     }
   };
 
-  // Calculate general progress metrics
   const getProgressStats = () => {
     let totalItems = 0;
     let completedItems = 0;
@@ -335,6 +293,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     let targetTime = 0;
 
     const traverse = (list) => {
+      if (!list) return;
       list.forEach(item => {
         totalItems++;
         if (item.status === "done") completedItems++;
@@ -354,573 +313,238 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const stats = getProgressStats();
   const videoId = selectedTopic ? getYoutubeVideoId(videoUrlInput) : null;
 
-  // Recursive tree renderer
+  // Safe Tree Rendering Architecture with Correct Green Highlights
   const YatraTreeNode = ({ node, depth = 0 }) => {
     const isCollapsed = collapsedNodes[node.id];
     const hasChildren = node.subtopics && node.subtopics.length > 0;
+    const statusCfg = getStatusConfig(node.status);
     const isSelected = selectedTopic && selectedTopic.id === node.id;
-    const isCompleted = node.status === "done";
-    const isProgress = node.status === "in-progress";
+
+    const displayTitle = typeof node.title === "object" && node.title !== null 
+      ? (node.title.title || "Untitled Subtopic") 
+      : (node.title || "Untitled Topic");
 
     return (
-      <div style={{ marginLeft: depth > 0 ? "20px" : "0px", borderLeft: depth > 0 ? "2px dashed rgba(255, 255, 255, 0.15)" : "none", paddingLeft: depth > 0 ? "16px" : "0px", marginBottom: "8px" }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", background: isSelected ? "var(--accent-gold-glow)" : "transparent", border: isSelected ? "1px solid var(--accent-gold)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s" }}>
-          
+      <div style={{ 
+        marginLeft: depth > 0 ? "20px" : "0", 
+        borderLeft: depth > 0 ? "2px dashed rgba(255, 255, 255, 0.15)" : "none", 
+        paddingLeft: depth > 0 ? "14px" : "0",
+        marginTop: "4px"
+      }}>
+        <div style={{ 
+          display: "flex", gap: "10px", alignItems: "center", padding: "10px 12px", 
+          borderRadius: "6px", background: isSelected ? "rgba(16, 185, 129, 0.12)" : "transparent", 
+          border: isSelected ? "1px solid #10b981" : "1px solid transparent", cursor: "pointer"
+        }}>
           {hasChildren ? (
-            <button onClick={(e) => { e.stopPropagation(); toggleCollapse(node.id); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
+            <button onClick={(e) => { e.stopPropagation(); toggleCollapse(node.id); }} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center" }}>
               {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
             </button>
-          ) : (
-            <div style={{ width: 14 }} />
-          )}
+          ) : <div style={{ width: 14 }} />}
 
-          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", padding: "0 2px" }} title={`Status: ${node.status || "not-started"}. Click to cycle.`}>
-            {isCompleted ? (
-              <CheckCircle size={15} style={{ color: "var(--color-success)" }} />
-            ) : isProgress ? (
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-            ) : (
-              <span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid var(--text-muted)", display: "inline-block", background: "transparent", opacity: 0.5 }} />
-            )}
+          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", color: statusCfg.color, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
+            {statusCfg.icon}
           </button>
 
-          <div onClick={() => selectTopic(node)} style={{ flex: 1, fontSize: 13, color: isSelected ? "var(--text-primary)" : isCompleted ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: isSelected ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {node.title || "Untitled Topic"}
+          <div onClick={() => selectTopic(node)} style={{ flex: 1, fontSize: 13, color: isSelected ? "#ffffff" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {displayTitle}
           </div>
-
-          {node.timeSpent > 0 && (
-            <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color: "var(--text-muted)", fontFamily: "monospace" }}>
-              {formatDuration(node.timeSpent)}
-            </span>
-          )}
         </div>
 
         {hasChildren && !isCollapsed && (
-          <div style={{ marginTop: "4px", marginBottom: "4px" }}>
-            {node.subtopics.map(child => (
-              <YatraTreeNode key={child.id} node={child} depth={depth + 1} />
-            ))}
+          <div style={{ marginTop: "4px", marginBottom: "6px" }}>
+            {node.subtopics.map((child, idx) => {
+              const subNode = typeof child === "object" && child !== null
+                ? {
+                    id: child.id || `${node.id}_sub_${idx}`,
+                    title: child.title || "Untitled Subtopic",
+                    status: child.status || "not-started",
+                    subtopics: child.subtopics || [],
+                    videoUrl: child.videoUrl || "",
+                    userNotes: child.userNotes || ""
+                  }
+                : {
+                    id: `${node.id}_sub_${idx}`,
+                    title: child,
+                    status: "not-started",
+                    subtopics: [],
+                    videoUrl: "",
+                    userNotes: ""
+                  };
+
+              return (
+                <YatraTreeNode key={subNode.id} node={subNode} depth={depth + 1} />
+              );
+            })}
           </div>
         )}
       </div>
     );
   };
 
-  const renderNavigationTree = () => (
-    <div className="yatra-tracker-sidebar" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)" }}>
-        <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic?.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-          ← Back to Gallery
-        </button>
-        <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem", margin: 0, color: "var(--accent-gold)" }}>{yatra.title}</h3>
-        
-        {/* Global Progress Bar */}
-        <div style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-            <span>Progress</span>
-            <span>{stats.pct}% Complete</span>
-          </div>
-          <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${stats.pct}%`, background: "var(--color-success)" }} />
-          </div>
-        </div>
+  // Isolated Textarea Module
+  const renderNotesContainer = (isTall) => (
+    <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1" }}>Sadhana Reflection Notes</label>
+        <span style={{ fontSize: 11, color: "#64748b" }}>Auto-saving Changes</span>
       </div>
-
-      {/* Progress Cycle Legend */}
-      <div className="yatra-progress-legend" style={{ padding: "10px 16px 10px 16px", fontSize: 11, color: "var(--text-muted)", background: "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.05)", lineHeight: 1.4 }}>
-        Click node symbols to cycle progress metrics:<br />
-        <span style={{ color: "var(--text-secondary)" }}>○ Not Started ➔ ◑ In Progress ➔ ● Completed</span>
-      </div>
-
-      {/* Tree List */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-        {yatra.topics && yatra.topics.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {yatra.topics.map(topic => (
-              <YatraTreeNode key={topic.id} node={topic} />
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: "center", padding: 20, color: "var(--text-muted)", fontSize: 12 }}>
-            No topics in this Lakshya. Edit the structure to add topics!
-          </div>
-        )}
-      </div>
+      <textarea
+        placeholder="Type continuous reflection summaries here..."
+        value={notesInput}
+        onChange={(e) => handleNotesChange(e.target.value)}
+        style={{ 
+          width: "100%", height: isTall ? "340px" : "180px", background: "rgba(0,0,0,0.3)", 
+          border: "1px solid #475569", color: "#fff", padding: "12px", borderRadius: "6px", 
+          fontFamily: "monospace", fontSize: 13, resize: "none", lineHeight: 1.5 
+        }}
+      />
     </div>
   );
 
-  const renderMediaDeck = () => {
-    if (videoId) {
-      return (
-        <div className="yatra-video-container">
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title={selectedTopic.title}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </div>
-      );
-    } else if (videoUrlInput && (videoUrlInput.startsWith("http://") || videoUrlInput.startsWith("https://") || videoUrlInput.includes("."))) {
-      return (
-        <div className="yatra-resource-banner">
-          <ExternalLink size={32} className="resource-icon" />
-          <h4>External Study Resource</h4>
-          <p style={{ fontSize: 12, wordBreak: "break-all" }}>{videoUrlInput}</p>
-          <a 
-            href={videoUrlInput.startsWith("http") ? videoUrlInput : `https://${videoUrlInput}`}
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="btn btn-gold"
-            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}
-          >
-            <span>Open Study Resource Web Link</span>
-            <ExternalLink size={14} />
-          </a>
-        </div>
-      );
-    } else {
-      return (
-        <div className="yatra-video-placeholder">
-          <Play size={32} />
-          <span style={{ fontSize: 13 }}>No study resource linked. Paste a link below to study.</span>
-        </div>
-      );
-    }
-  };
-
   return (
-    <div className="yatra-tracker-container">
-      {!selectedTopic ? (
-        <>
-          {renderNavigationTree()}
-          
-          {/* Introduction Screen when no topic is selected */}
-          <div className="yatra-tracker-body" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 40, textAlign: "center", overflowY: "auto" }}>
-            <span style={{ fontSize: "3rem", marginBottom: 16 }}>🛕</span>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.8rem", color: "var(--accent-gold)", margin: 0 }}>
-              Welcome to {yatra.title}
-            </h2>
-            <p style={{ maxWidth: 500, color: "var(--text-secondary)", fontSize: 13, marginTop: 8, marginBottom: 24 }}>
-              {yatra.description || "Begin your custom knowledge path. Choose a topic from the left sidebar to start your Sadhana session (timer, notes, and AI tutor reviews)."}
-            </p>
+    <div style={{ display: "flex", height: "calc(100vh - 60px)", width: "100%", background: "#0f172a", color: "#f8fafc", overflow: "hidden" }}>
+      
+      {/* LEFT NAVIGATION TREE PANE */}
+      <div style={{ width: "320px", minWidth: "320px", borderRight: "1px solid #334155", display: "flex", flexDirection: "column", background: "#1e293b", height: "100%" }}>
+        <div style={{ padding: "16px", borderBottom: "1px solid #334155" }}>
+          <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+            ← Gallery Index
+          </button>
+          <h3 style={{ fontWeight: 700, fontSize: "1rem", margin: 0, color: "#10b981" }}>{yatra.title}</h3>
+        </div>
 
-            {/* General Stats */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 32 }}>
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Completed</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--color-success)" }}>
-                  {stats.completedItems} / {stats.totalItems}
-                </div>
-              </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+          <span style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 12 }}>
+            💡 Cycle completion: Click the circle icon symbols (○/●) inside the directory layout tree.
+          </span>
+          {yatra.topics?.map(topic => (
+            <YatraTreeNode key={topic.id} node={topic} />
+          ))}
+        </div>
+      </div>
 
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Time Spent</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--accent-gold)" }}>
-                  {formatDuration(stats.totalTime)}
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Target Duration</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "#38bdf8" }}>
-                  {formatTargetDuration(stats.targetTime)}
-                </div>
-              </div>
-            </div>
-
-            {/* Sanskrit Quote Banner */}
-            <div style={{ padding: "16px 20px", background: "rgba(243,156,18,0.02)", border: "1px solid rgba(243,156,18,0.1)", borderRadius: "var(--radius-md)", maxWidth: 500 }}>
-              <div style={{ color: "var(--accent-gold)", fontWeight: 700, fontSize: 14, fontStyle: "italic", marginBottom: 6 }}>
-                "ज्ञानेन सदृशं पवित्रमिह विद्यते।"
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                "Indeed, there is nothing in this world as purifying as knowledge." — Bhagavad Gita (4.38)
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="yatra-tracker-body">
-          <div className="yatra-tracker-workspace-wrapper">
-            {/* Topic Header & Timer */}
-            <div className="yatra-tracker-header">
+      {/* RIGHT WORKSPACE CONTEXT ENGINE */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" }}>
+        {selectedTopic ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            
+            {/* Header Toolbar controls */}
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e293b" }}>
               <div>
-                <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.05em" }}>Sadhana Topic</span>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "2px 0 0 0", fontFamily: "var(--font-display)" }}>{selectedTopic.title || "Untitled"}</h2>
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>{selectedTopic.title || "Selected Lesson"}</h2>
               </div>
- 
-              {/* Study Timer Panel */}
+
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: timerRunning ? "rgba(243,156,18,0.1)" : "rgba(255,255,255,0.03)", borderRadius: "var(--radius-sm)", border: timerRunning ? "1px solid var(--accent-gold)" : "1px solid var(--border-color)" }}>
-                  <Clock size={16} style={{ color: timerRunning ? "var(--accent-gold)" : "var(--text-muted)" }} />
-                  <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600 }}>
-                    {timerRunning ? formatDuration(timerSeconds) : formatDuration(selectedTopic.timeSpent || 0)}
-                  </span>
-                  {selectedTopic.targetTime > 0 && (
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                      / {formatTargetDuration(selectedTopic.targetTime)} goal
-                    </span>
-                  )}
-                </div>
- 
                 <button
-                  onClick={() => {
-                    if (timerRunning) {
-                      saveTimeSpent(selectedTopic.id, timerSeconds);
-                      setTimerSeconds(0);
-                    }
-                    setTimerRunning(!timerRunning);
-                  }}
-                  className={`btn ${timerRunning ? "btn-secondary" : "btn-gold"}`}
-                  style={{ minHeight: "auto", padding: "6px 14px", fontSize: 13 }}
+                  onClick={() => setIsVistaraMode(!isVistaraMode)}
+                  style={{ background: isVistaraMode ? "rgba(16, 185, 129, 0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${isVistaraMode ? "#10b981" : "#475569"}`, color: isVistaraMode ? "#10b981" : "#cbd5e1", borderRadius: "6px", padding: "6px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}
                 >
-                  {timerRunning ? "Stop Timer" : "Start Study"}
+                  {isVistaraMode ? "Standard Split View" : "Wide Theater View"}
                 </button>
- 
-                {/* Vistara/Ekagrata Mode Toggle Button next to Start Study */}
+                <div style={{ fontFamily: "monospace", fontSize: 13, background: "rgba(0,0,0,0.2)", padding: "4px 8px", borderRadius: 4 }}>
+                  ⏱ {formatDuration(timerSeconds || selectedTopic.timeSpent || 0)}
+                </div>
                 <button
-                  onClick={() => setIsTheaterMode(!isTheaterMode)}
-                  className="btn btn-secondary"
-                  style={{ minHeight: "auto", padding: "6px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
-                  title={isTheaterMode ? "Switch to Ekagrata Mode (Focus Layout)" : "Switch to Vistara Mode (Expanded Layout)"}
+                  onClick={() => setTimerRunning(!timerRunning)}
+                  style={{ background: timerRunning ? "#ef4444" : "#10b981", color: "#0f172a", border: "none", borderRadius: "6px", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                 >
-                  {isTheaterMode ? (
-                    <>
-                      <Minimize size={14} />
-                      <span>Ekagrata Mode</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize size={14} />
-                      <span>Vistara Mode</span>
-                    </>
-                  )}
+                  {timerRunning ? "Stop" : "Study"}
                 </button>
               </div>
             </div>
- 
-            {/* Split Screen Workspace */}
-            <div className={`yatra-sadhana-workspace ${isTheaterMode ? "workspace-vistara" : "workspace-ekagrata"}`}>
-              {/* Left Column: Media & Notes */}
-              <div className="yatra-sadhana-media-pane">
-                <div className="yatra-video-wrapper">
-                  {/* Title / Action bar */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Video</span>
-                    {videoUrlInput && (
-                      <button
-                        onClick={() => setIsTheaterMode(!isTheaterMode)}
-                        className="btn btn-secondary"
-                        style={{ minHeight: "auto", padding: "4px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
-                        title={isTheaterMode ? "Switch to Ekagrata Mode (Focus Layout)" : "Switch to Vistara Mode (Expanded Layout)"}
-                      >
-                        {isTheaterMode ? (
-                          <>
-                            <Minimize size={12} />
-                            <span>Ekagrata Mode</span>
-                          </>
-                        ) : (
-                          <>
-                            <Maximize size={12} />
-                            <span>Vistara Mode</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+
+            {/* SPLIT COLUMN VIEW GRID */}
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: isVistaraMode ? "1.8fr 1fr" : "1fr 1fr", overflow: "hidden" }}>
+              
+              {/* MEDIA DECK GRID CONTAINER */}
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", padding: "20px", borderRight: "1px solid #334155", height: "100%" }}>
+                
+                {videoId ? (
+                  <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: "10px", overflow: "hidden" }}>
+                    <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={selectedTopic.title} frameBorder="0" allowFullScreen />
                   </div>
- 
-                  {/* Multi-Resource Media Deck (YouTube Frame vs. Alternative Web URLs) */}
-                  {renderMediaDeck()}
- 
-                  {/* Link Paste / Auto Discovery */}
-                  <div className="yatra-video-link-row">
-                    <input
-                      type="text"
-                      placeholder="Paste YouTube Video URL or general reference web link..."
-                      value={videoUrlInput}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setVideoUrlInput(val);
-                        updateTopicField(selectedTopic.id, { videoUrl: val });
-                      }}
-                      className="yatra-video-input"
-                    />
-                    <button onClick={discoverVideoTitle} disabled={isDiscovering || !videoUrlInput} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 13 }}>
-                      {isDiscovering ? <Loader size={14} className="spinner" /> : <Sparkles size={14} />} Auto-Discover
-                    </button>
+                ) : videoUrlInput && videoUrlInput.startsWith("http") ? (
+                  /* High-Visibility General Documentation Web Banner mapped with Green accents */
+                  <div style={{ width: "100%", padding: "32px 24px", background: "#1e293b", border: "2px dashed #475569", borderRadius: "10px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", textCenter: "center" }}>
+                    <ExternalLink size={36} style={{ color: "#10b981" }} />
+                    <span style={{ fontSize: "14px", color: "#cbd5e1", fontWeight: 600 }}>Linked Reference Resource:</span>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", width: "100%", textAlign: "center" }}>{videoUrlInput}</p>
+                    <a href={videoUrlInput} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 16px", background: "#10b981", color: "#0f172a", textDecoration: "none", borderRadius: "6px", fontSize: "13px", fontWeight: 700 }}>
+                      Open Study Resource Web Link ↗
+                    </a>
                   </div>
-                </div>
- 
-                {/* Seeker's Sadhana Notes rendered in left column if NOT in Vistara mode */}
-                {!isTheaterMode && (
-                  <div className="yatra-sadhana-notes">
-                    <div className="yatra-notes-container">
-                      <div className="yatra-notes-header">
-                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
-                        <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
-                          Save Notes
-                        </button>
-                      </div>
-                      <textarea
-                        placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
-                        className="yatra-notes-textarea"
-                        value={notesInput}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNotesInput(val);
-                          updateTopicField(selectedTopic.id, { userNotes: val });
-                        }}
-                      />
-                    </div>
+                ) : (
+                  <div style={{ width: "100%", aspectRatio: "16/9", background: "rgba(0,0,0,0.2)", borderRadius: "10px", border: "1px dashed #475569", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "#64748b" }}>
+                    <Play size={24} /> 
+                    <span style={{ fontSize: 12, marginTop: 6 }}>Paste YouTube link or reference Web address down below to begin study.</span>
                   </div>
                 )}
+
+                <input
+                  type="text"
+                  placeholder="Paste YouTube Link or Documentation URL here..."
+                  value={videoUrlInput}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid #475569", color: "#fff", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
+                />
+
+                {/* Show Notes underneath player ONLY during normal layout */}
+                {!isVistaraMode && renderNotesContainer(false)}
               </div>
- 
-              {/* Right Column: Notes (in Vistara mode) & AI Acharya panel / Navigation Tree (in Ekagrata mode) */}
-              <div className="yatra-sadhana-acharya-pane">
-                {/* Seeker's Sadhana Notes rendered in right column if IN Vistara mode */}
-                {isTheaterMode && (
-                  <div className="yatra-sadhana-notes">
-                    <div className="yatra-notes-container">
-                      <div className="yatra-notes-header">
-                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
-                        <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
-                          Save Notes
+
+              {/* INTEGRATED INTERACTIVE SIDEBAR WRAPPER CONTAINER */}
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", padding: "20px", gap: "16px", height: "100%" }}>
+                
+                {/* Dynamically push Notes to the top of the Sidebar when wide view is activated */}
+                {isVistaraMode && renderNotesContainer(true)}
+
+                {/* AI Acharya tab section layout with updated Green selection borders */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid #334155", borderRadius: "10px", background: "#1e293b", overflow: "hidden" }}>
+                  <div style={{ display: "flex", borderBottom: "1px solid #334155", background: "rgba(0,0,0,0.1)" }}>
+                    <button onClick={() => setActiveTab("sadhana")} style={{ flex: 1, padding: "10px", background: "none", border: "none", borderBottom: activeTab === "sadhana" ? "2px solid #10b981" : "none", color: activeTab === "sadhana" ? "#10b981" : "#94a3b8", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🧘 Acharya Review</button>
+                    <button onClick={() => setActiveTab("chat")} style={{ flex: 1, padding: "10px", background: "none", border: "none", borderBottom: activeTab === "chat" ? "2px solid #10b981" : "none", color: activeTab === "chat" ? "#10b981" : "#94a3b8", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>💬 Doubt Chat</button>
+                  </div>
+
+                  <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+                    {activeTab === "sadhana" && (
+                      <div style={{ textAlign: "center", padding: "10px" }}>
+                        <button onClick={submitForMeditation} style={{ background: "#10b981", color: "#0f172a", border: "none", padding: "8px 14px", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                          Submit Notes for Acharya Evaluation
                         </button>
                       </div>
-                      <textarea
-                        placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
-                        className="yatra-notes-textarea"
-                        value={notesInput}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNotesInput(val);
-                          updateTopicField(selectedTopic.id, { userNotes: val });
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
- 
-                {/* Navigation tree panel rendered in the Right Column in Standard Mode */}
-                {!isTheaterMode && renderNavigationTree()}
- 
-                <div className="yatra-acharya-panel">
-                  {/* Tabs */}
-                  <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", background: "var(--bg-secondary)" }}>
-                    <button onClick={() => setActiveTab("sadhana")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "sadhana" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "sadhana" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                      🧘 Acharya Review
-                    </button>
-                    <button onClick={() => setActiveTab("chat")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "chat" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "chat" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                      💬 Sadhana Chat Tutor
-                    </button>
-                  </div>
- 
-                  {/* Tab Contents */}
-                  <div className="yatra-acharya-body">
-                    
-                    {activeTab === "sadhana" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                        {isMeditating ? (
-                          <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                            <Loader size={36} className="spinner" style={{ color: "var(--accent-gold)" }} />
-                            <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Acharya is Meditating</h4>
-                            <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
-                              Reviewing notes, assessing understanding depth, and preparing active recall questions...
-                            </p>
-                          </div>
-                        ) : selectedTopic.aiAnalysis ? (
-                          <div>
-                            {/* Score and Overview */}
-                            <div className="card" style={{ background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.15)", padding: 16, borderRadius: 8, marginBottom: 16 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                <span style={{ fontSize: 12, textTransform: "uppercase", color: "var(--color-success)", fontWeight: 600, letterSpacing: "0.05em" }}>Evaluation Complete</span>
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <Award size={16} style={{ color: "var(--accent-gold)" }} />
-                                  <span style={{ fontWeight: 700, fontSize: 15 }}>{selectedTopic.aiAnalysis.score || 0} Karma</span>
-                                </div>
-                              </div>
-                              
-                              {/* Sanskrit quote display */}
-                              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-primary)", fontStyle: "italic", margin: 0 }}>
-                                {selectedTopic.id === justMeditatedTopicId ? (
-                                  <TypewriterText text={selectedTopic.aiAnalysis.feedback} />
-                                ) : (
-                                  selectedTopic.aiAnalysis.feedback
-                                )}
-                              </p>
-                            </div>
- 
-                            {/* Concepts Grasped */}
-                            <div style={{ marginBottom: 16 }}>
-                              <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Grasped Concepts</h4>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {selectedTopic.aiAnalysis.identifiedConcepts?.map((c, i) => (
-                                  <span key={i} style={{ fontSize: 11, padding: "3px 8px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 4, color: "#9bf" }}>
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
- 
-                            {/* Gap Suggestions */}
-                            {selectedTopic.aiAnalysis.gapSuggestions?.length > 0 && (
-                              <div style={{ marginBottom: 16 }}>
-                                <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Gaps in Understanding</h4>
-                                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                                  {selectedTopic.aiAnalysis.gapSuggestions.map((g, i) => (
-                                    <li key={i}>{g}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
- 
-                            {/* Reference Trials (Practice) */}
-                            {selectedTopic.aiAnalysis.relevantTrials?.length > 0 && (
-                              <div style={{ marginBottom: 24 }}>
-                                <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Recommended Trials (Practice Links)</h4>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                  {selectedTopic.aiAnalysis.relevantTrials.map((link, i) => (
-                                    <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 12px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 6, color: "var(--accent-gold)", fontSize: 12, textDecoration: "none" }}>
-                                      <span style={{ flex: 1, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{link}</span>
-                                      <ExternalLink size={12} />
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
- 
-                            {/* Active Recall Quiz */}
-                            {selectedTopic.aiAnalysis.recallQuestions?.length > 0 && (
-                              <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 16 }}>
-                                <h4 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                                  <Sparkles size={16} /> Active Recall Challenge
-                                </h4>
- 
-                                {quizSubmitted ? (
-                                  <div style={{ padding: "12px 14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                                    <CheckCircle size={20} style={{ color: "var(--color-success)" }} />
-                                    <div>
-                                      <div style={{ fontSize: 13, fontWeight: 600 }}>Challenge Accomplished!</div>
-                                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Your answers have been registered, and +15 Karma points have been awarded.</div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <form onSubmit={handleQuizSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                                    {selectedTopic.aiAnalysis.recallQuestions.map((q, idx) => (
-                                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        <label style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{idx + 1}. {q}</label>
-                                        <input
-                                          type="text"
-                                          placeholder="Write your answer..."
-                                          value={quizAnswers[idx] || ""}
-                                          onChange={(e) => {
-                                            const next = [...quizAnswers];
-                                            next[idx] = e.target.value;
-                                            setQuizAnswers(next);
-                                          }}
-                                          style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 4, fontSize: 12 }}
-                                        />
-                                      </div>
-                                    ))}
-                                    <button type="submit" className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", minHeight: "auto", fontSize: 13, marginTop: 6 }}>
-                                      Submit Answers & Claim Karma (+15)
-                                    </button>
-                                  </form>
-                                )}
-                              </div>
-                            )}
- 
-                            {/* Re-Meditate */}
-                            <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
-                              <button onClick={submitForMeditation} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 12 }}>
-                                <RefreshCw size={12} /> Re-Submit for Review
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                            <span style={{ fontSize: "2rem" }}>🧘</span>
-                            <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Consult the Acharya</h4>
-                            <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
-                              Once you have taken study notes, submit them for evaluation. The Acharya will analyze your depth, suggest concepts, point out gaps, and formulate active recall challenges.
-                            </p>
- 
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
-                              <input
-                                type="checkbox"
-                                id="simulate"
-                                checked={simulateMeditation}
-                                onChange={(e) => setSimulateMeditation(e.target.checked)}
-                                style={{ cursor: "pointer" }}
-                              />
-                              <label htmlFor="simulate" style={{ fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}>
-                                Simulate offline review (free-tier / instant)
-                              </label>
-                            </div>
- 
-                            <button onClick={submitForMeditation} className="btn btn-gold" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", fontSize: 13 }}>
-                              <Sparkles size={14} /> Submit for Acharya Review
-                            </button>
-                          </div>
-                        )}
-                      </div>
                     )}
- 
                     {activeTab === "chat" && (
-                      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                        {/* Chat Messages */}
-                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-                          {chatHistory.length === 0 && (
-                            <div style={{ color: "var(--text-muted)", fontSize: 12, fontStyle: "italic", textAlign: "center", padding: 20 }}>
-                              The Acharya awaits your queries. Ask about replication, caching, or anything from the study notes.
-                            </div>
-                          )}
+                      <div style={{ display: "flex", flex: 1, flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", marginBottom: 12 }}>
                           {chatHistory.map((msg, i) => (
-                            <div key={i} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%", padding: "10px 12px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: msg.role === "user" ? "var(--color-primary-glow)" : "rgba(255,255,255,0.03)", border: msg.role === "user" ? "1px solid var(--color-primary)" : "1px solid var(--border-color)", whiteSpace: "pre-wrap" }}>
-                              <strong>{msg.role === "user" ? "Seeker: " : "Acharya: "}</strong>
-                              {msg.role === "assistant" && i === chatHistory.length - 1 ? (
-                                <TypewriterText text={msg.content} />
-                              ) : (
-                                msg.content
-                              )}
+                            <div key={i} style={{ padding: "8px 10px", borderRadius: 6, fontSize: 12, background: "rgba(255,255,255,0.02)", border: "1px solid #334155" }}>
+                              <strong>{msg.role === "user" ? "You: " : "Acharya: "}</strong>{msg.content}
                             </div>
                           ))}
-                          {chatLoading && (
-                            <div style={{ alignSelf: "flex-start", padding: "10px 12px", background: "rgba(255,255,255,0.02)", border: "1px dashed var(--border-color)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                              <Loader size={12} className="spinner" /> Acharya is pondering...
-                            </div>
-                          )}
                         </div>
- 
-                        {/* Chat Input */}
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <input
-                            type="text"
-                            placeholder="Ask a doubt..."
-                            value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") sendChatMessage(); }}
-                            style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
-                          />
-                          <button onClick={sendChatMessage} className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", minHeight: "auto" }}>
-                            <Send size={14} />
-                          </button>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input type="text" placeholder="Ask doubt..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&sendChatMessage()} style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid #475569", padding: "6px", color: "#fff", borderRadius: 4 }} />
+                          <button onClick={sendChatMessage} style={{ background: "#10b981", padding: "6px 12px", border: "none", borderRadius: 4 }}><Send size={12} /></button>
                         </div>
                       </div>
                     )}
- 
                   </div>
                 </div>
+
               </div>
+
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 40, textAlign: "center" }}>
+            <span style={{ fontSize: "2.5rem" }}>🛕</span>
+            <h2 style={{ fontWeight: 700, color: "#10b981", margin: "10px 0 0 0" }}>GyanYatra Study Space</h2>
+            <p style={{ color: "#94a3b8", fontSize: 13, maxWidth: 400 }}>Select a node topic from the left catalog index dashboard to initialize your learning session path mapping.</p>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
