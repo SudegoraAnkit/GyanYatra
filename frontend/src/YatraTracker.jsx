@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Clock, CheckCircle, Send, Loader, ExternalLink, Sparkles, Edit, BookOpen, ChevronDown, ChevronRight, Eye, RefreshCw, Award, Volume2, X } from "lucide-react";
+import { Play, Clock, CheckCircle, Send, Loader, ExternalLink, Sparkles, Edit, BookOpen, ChevronDown, ChevronRight, Eye, RefreshCw, Award, Volume2, X, Maximize, Minimize } from "lucide-react";
 import { TypewriterText } from "./App";
 
 export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
@@ -20,6 +20,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("sadhana"); // "sadhana" or "chat"
   const [justMeditatedTopicId, setJustMeditatedTopicId] = useState(null);
+  const [layoutMode, setLayoutMode] = useState("standard"); // "standard" or "theater"
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -485,58 +486,86 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
             </div>
 
             {/* Split Screen Workspace */}
-            <div className="yatra-tracker-main">
+            <div className={`yatra-tracker-main ${layoutMode}`}>
               {/* Left Column: Media & Notes */}
               <div className="yatra-tracker-left-pane">
-                
-                {/* Embedded YouTube Frame */}
-                {videoId ? (
-                  <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "16px", border: "1px solid var(--border-color)" }}>
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      title={selectedTopic.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
+                <div className="yatra-video-wrapper">
+                  {/* Title / Action bar */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Video</span>
+                    {videoId && (
+                      <button
+                        onClick={() => setLayoutMode(layoutMode === "standard" ? "theater" : "standard")}
+                        className="btn btn-secondary"
+                        style={{ minHeight: "auto", padding: "4px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+                        title={layoutMode === "standard" ? "Switch to Theater Mode" : "Switch to Standard Mode"}
+                      >
+                        {layoutMode === "standard" ? (
+                          <>
+                            <Maximize size={12} />
+                            <span>Theater Mode</span>
+                          </>
+                        ) : (
+                          <>
+                            <Minimize size={12} />
+                            <span>Standard Mode</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Embedded YouTube Frame */}
+                  {videoId ? (
+                    <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "16px", border: "1px solid var(--border-color)" }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title={selectedTopic.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ width: "100%", aspectRatio: "16/9", background: "rgba(0,0,0,0.3)", borderRadius: "var(--radius-md)", border: "1px dashed var(--border-color)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", gap: 8, marginBottom: "16px" }}>
+                      <Play size={32} />
+                      <span style={{ fontSize: 13 }}>No YouTube video linked. Paste a link below to study.</span>
+                    </div>
+                  )}
+
+                  {/* Link Paste / Auto Discovery */}
+                  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                    <input
+                      type="text"
+                      placeholder="Paste YouTube Video URL..."
+                      value={videoUrlInput}
+                      onChange={(e) => setVideoUrlInput(e.target.value)}
+                      style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
                     />
-                  </div>
-                ) : (
-                  <div style={{ width: "100%", aspectRatio: "16/9", background: "rgba(0,0,0,0.3)", borderRadius: "var(--radius-md)", border: "1px dashed var(--border-color)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", gap: 8, marginBottom: "16px" }}>
-                    <Play size={32} />
-                    <span style={{ fontSize: 13 }}>No YouTube video linked. Paste a link below to study.</span>
-                  </div>
-                )}
-
-                {/* Link Paste / Auto Discovery */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                  <input
-                    type="text"
-                    placeholder="Paste YouTube Video URL..."
-                    value={videoUrlInput}
-                    onChange={(e) => setVideoUrlInput(e.target.value)}
-                    style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
-                  />
-                  <button onClick={discoverVideoTitle} disabled={isDiscovering || !videoUrlInput} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 13 }}>
-                    {isDiscovering ? <Loader size={14} className="spinner" /> : <Sparkles size={14} />} Auto-Discover
-                  </button>
-                </div>
-
-                {/* Seeker's Sadhana Notes */}
-                <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
-                    <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
-                      Save Notes
+                    <button onClick={discoverVideoTitle} disabled={isDiscovering || !videoUrlInput} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 13 }}>
+                      {isDiscovering ? <Loader size={14} className="spinner" /> : <Sparkles size={14} />} Auto-Discover
                     </button>
                   </div>
-                  <textarea
-                    placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
-                    value={notesInput}
-                    onChange={(e) => setNotesInput(e.target.value)}
-                    style={{ width: "100%", flex: 1, minHeight: "200px", background: "rgba(0,0,0,0.25)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "12px 14px", borderRadius: 8, fontFamily: "monospace", fontSize: 13, resize: "none", lineHeight: 1.5 }}
-                  />
+                </div>
+
+                <div className="yatra-notes-wrapper">
+                  {/* Seeker's Sadhana Notes */}
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1, height: "100%" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
+                      <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
+                        Save Notes
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
+                      value={notesInput}
+                      onChange={(e) => setNotesInput(e.target.value)}
+                      style={{ width: "100%", flex: 1, minHeight: "200px", background: "rgba(0,0,0,0.25)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "12px 14px", borderRadius: 8, fontFamily: "monospace", fontSize: 13, resize: "none", lineHeight: 1.5 }}
+                    />
+                  </div>
                 </div>
               </div>
 

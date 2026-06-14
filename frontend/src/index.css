@@ -2307,3 +2307,92 @@ body {
   }
 }
 
+/* Custom Yatra Workspace Toggle Styles */
+.yatra-tracker-main.standard .yatra-tracker-left-pane {
+  flex: 1.2;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.yatra-tracker-main.standard .yatra-tracker-right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.yatra-tracker-main.standard .yatra-video-wrapper {
+  width: 100%;
+}
+
+.yatra-tracker-main.standard .yatra-notes-wrapper {
+  width: 100%;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.yatra-tracker-main.theater .yatra-tracker-right-pane {
+  display: none !important;
+}
+
+.yatra-tracker-main.theater .yatra-tracker-left-pane {
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+  padding: 20px !important;
+  gap: 24px !important;
+  border-right: none !important;
+}
+
+.yatra-tracker-main.theater .yatra-video-wrapper {
+  flex: 7.2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  padding-right: 8px !important;
+}
+
+.yatra-tracker-main.theater .yatra-notes-wrapper {
+  flex: 2.8 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  border-left: 1px solid var(--border-color) !important;
+  padding-left: 24px !important;
+  overflow-y: auto !important;
+}
+
+@media (max-width: 768px) {
+  .yatra-tracker-main.theater .yatra-tracker-left-pane {
+    flex-direction: column !important;
+    overflow-y: visible !important;
+    gap: 16px !important;
+    height: auto !important;
+  }
+  
+  .yatra-tracker-main.theater .yatra-video-wrapper {
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    padding-right: 0 !important;
+  }
+  
+  .yatra-tracker-main.theater .yatra-notes-wrapper {
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}
+
