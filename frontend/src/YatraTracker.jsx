@@ -406,66 +406,145 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     );
   };
 
-  const renderNotesBlock = () => (
-    <div className="yatra-sadhana-notes">
-      <div className="yatra-notes-container">
-        <div className="yatra-notes-header">
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
-          <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
-            Save Notes
-          </button>
+  const renderNavigationTree = () => (
+    <div className="yatra-tracker-sidebar" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)" }}>
+        <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic?.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+          ← Back to Gallery
+        </button>
+        <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem", margin: 0, color: "var(--accent-gold)" }}>{yatra.title}</h3>
+        
+        {/* Global Progress Bar */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
+            <span>Progress</span>
+            <span>{stats.pct}% Complete</span>
+          </div>
+          <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${stats.pct}%`, background: "var(--color-success)" }} />
+          </div>
         </div>
-        <textarea
-          placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
-          className="yatra-notes-textarea"
-          value={notesInput}
-          onChange={(e) => setNotesInput(e.target.value)}
-        />
+      </div>
+
+      {/* Progress Cycle Legend */}
+      <div className="yatra-progress-legend" style={{ padding: "10px 16px 10px 16px", fontSize: 11, color: "var(--text-muted)", background: "rgba(255,255,255,0.01)", borderBottom: "1px solid rgba(255,255,255,0.05)", lineHeight: 1.4 }}>
+        Click node symbols to cycle progress metrics:<br />
+        <span style={{ color: "var(--text-secondary)" }}>○ Not Started ➔ ◑ In Progress ➔ ● Completed</span>
+      </div>
+
+      {/* Tree List */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+        {yatra.topics && yatra.topics.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {yatra.topics.map(topic => (
+              <YatraTreeNode key={topic.id} node={topic} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: 20, color: "var(--text-muted)", fontSize: 12 }}>
+            No topics in this Lakshya. Edit the structure to add topics!
+          </div>
+        )}
       </div>
     </div>
   );
 
+  const renderMediaDeck = () => {
+    if (videoId) {
+      return (
+        <div className="yatra-video-container">
+          <iframe
+            width="100%"
+            height="100%"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title={selectedTopic.title}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      );
+    } else if (videoUrlInput && (videoUrlInput.startsWith("http://") || videoUrlInput.startsWith("https://") || videoUrlInput.includes("."))) {
+      return (
+        <div className="yatra-resource-banner">
+          <ExternalLink size={32} className="resource-icon" />
+          <h4>External Study Resource</h4>
+          <p style={{ fontSize: 12, wordBreak: "break-all" }}>{videoUrlInput}</p>
+          <a 
+            href={videoUrlInput.startsWith("http") ? videoUrlInput : `https://${videoUrlInput}`}
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="btn btn-gold"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}
+          >
+            <span>Open Study Resource Web Link</span>
+            <ExternalLink size={14} />
+          </a>
+        </div>
+      );
+    } else {
+      return (
+        <div className="yatra-video-placeholder">
+          <Play size={32} />
+          <span style={{ fontSize: 13 }}>No study resource linked. Paste a link below to study.</span>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="yatra-tracker-container">
-      {/* Sidebar: Topic tree */}
-      <div className="yatra-tracker-sidebar">
-        <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)" }}>
-          <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-            ← Back to Gallery
-          </button>
-          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem", margin: 0, color: "var(--accent-gold)" }}>{yatra.title}</h3>
+      {!selectedTopic ? (
+        <>
+          {renderNavigationTree()}
           
-          {/* Global Progress Bar */}
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-              <span>Progress</span>
-              <span>{stats.pct}% Complete</span>
+          {/* Introduction Screen when no topic is selected */}
+          <div className="yatra-tracker-body" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 40, textAlign: "center", overflowY: "auto" }}>
+            <span style={{ fontSize: "3rem", marginBottom: 16 }}>🛕</span>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.8rem", color: "var(--accent-gold)", margin: 0 }}>
+              Welcome to {yatra.title}
+            </h2>
+            <p style={{ maxWidth: 500, color: "var(--text-secondary)", fontSize: 13, marginTop: 8, marginBottom: 24 }}>
+              {yatra.description || "Begin your custom knowledge path. Choose a topic from the left sidebar to start your Sadhana session (timer, notes, and AI tutor reviews)."}
+            </p>
+
+            {/* General Stats */}
+            <div style={{ display: "flex", gap: 20, marginBottom: 32 }}>
+              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Completed</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--color-success)" }}>
+                  {stats.completedItems} / {stats.totalItems}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Time Spent</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--accent-gold)" }}>
+                  {formatDuration(stats.totalTime)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Target Duration</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "#38bdf8" }}>
+                  {formatTargetDuration(stats.targetTime)}
+                </div>
+              </div>
             </div>
-            <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${stats.pct}%`, background: "var(--color-success)" }} />
+
+            {/* Sanskrit Quote Banner */}
+            <div style={{ padding: "16px 20px", background: "rgba(243,156,18,0.02)", border: "1px solid rgba(243,156,18,0.1)", borderRadius: "var(--radius-md)", maxWidth: 500 }}>
+              <div style={{ color: "var(--accent-gold)", fontWeight: 700, fontSize: 14, fontStyle: "italic", marginBottom: 6 }}>
+                "ज्ञानेन सदृशं पवित्रमिह विद्यते।"
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                "Indeed, there is nothing in this world as purifying as knowledge." — Bhagavad Gita (4.38)
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Tree List */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          {yatra.topics && yatra.topics.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              {yatra.topics.map(topic => (
-                <YatraTreeNode key={topic.id} node={topic} />
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: 20, color: "var(--text-muted)", fontSize: 12 }}>
-              No topics in this Lakshya. Edit the structure to add topics!
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Panel: Topic Study Space */}
-      <div className="yatra-tracker-body">
-        {selectedTopic ? (
+        </>
+      ) : (
+        <div className="yatra-tracker-body">
           <div className="yatra-tracker-workspace-wrapper">
             {/* Topic Header & Timer */}
             <div className="yatra-tracker-header">
@@ -532,7 +611,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                   {/* Title / Action bar */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Video</span>
-                    {videoId && (
+                    {videoUrlInput && (
                       <button
                         onClick={() => setIsTheaterMode(!isTheaterMode)}
                         className="btn btn-secondary"
@@ -554,33 +633,20 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                     )}
                   </div>
  
-                  {/* Embedded YouTube Frame */}
-                  {videoId ? (
-                    <div className="yatra-video-container">
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        title={selectedTopic.title}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : (
-                    <div className="yatra-video-placeholder">
-                      <Play size={32} />
-                      <span style={{ fontSize: 13 }}>No YouTube video linked. Paste a link below to study.</span>
-                    </div>
-                  )}
+                  {/* Multi-Resource Media Deck (YouTube Frame vs. Alternative Web URLs) */}
+                  {renderMediaDeck()}
  
                   {/* Link Paste / Auto Discovery */}
                   <div className="yatra-video-link-row">
                     <input
                       type="text"
-                      placeholder="Paste YouTube Video URL..."
+                      placeholder="Paste YouTube Video URL or general reference web link..."
                       value={videoUrlInput}
-                      onChange={(e) => setVideoUrlInput(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setVideoUrlInput(val);
+                        updateTopicField(selectedTopic.id, { videoUrl: val });
+                      }}
                       className="yatra-video-input"
                     />
                     <button onClick={discoverVideoTitle} disabled={isDiscovering || !videoUrlInput} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 13 }}>
@@ -590,13 +656,58 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                 </div>
  
                 {/* Seeker's Sadhana Notes rendered in left column if NOT in Vistara mode */}
-                {!isTheaterMode && renderNotesBlock()}
+                {!isTheaterMode && (
+                  <div className="yatra-sadhana-notes">
+                    <div className="yatra-notes-container">
+                      <div className="yatra-notes-header">
+                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
+                        <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
+                          Save Notes
+                        </button>
+                      </div>
+                      <textarea
+                        placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
+                        className="yatra-notes-textarea"
+                        value={notesInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNotesInput(val);
+                          updateTopicField(selectedTopic.id, { userNotes: val });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
  
-              {/* Right Column: Notes (in Vistara mode) & AI Acharya panel */}
+              {/* Right Column: Notes (in Vistara mode) & AI Acharya panel / Navigation Tree (in Ekagrata mode) */}
               <div className="yatra-sadhana-acharya-pane">
                 {/* Seeker's Sadhana Notes rendered in right column if IN Vistara mode */}
-                {isTheaterMode && renderNotesBlock()}
+                {isTheaterMode && (
+                  <div className="yatra-sadhana-notes">
+                    <div className="yatra-notes-container">
+                      <div className="yatra-notes-header">
+                        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
+                        <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
+                          Save Notes
+                        </button>
+                      </div>
+                      <textarea
+                        placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
+                        className="yatra-notes-textarea"
+                        value={notesInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNotesInput(val);
+                          updateTopicField(selectedTopic.id, { userNotes: val });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+ 
+                {/* Navigation tree panel rendered in the Right Column in Standard Mode */}
+                {!isTheaterMode && renderNavigationTree()}
  
                 <div className="yatra-acharya-panel">
                   {/* Tabs */}
@@ -808,53 +919,8 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
               </div>
             </div>
           </div>
-        ) : (
-          /* Introduction Screen when no topic is selected */
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 40, textAlign: "center", overflowY: "auto" }}>
-            <span style={{ fontSize: "3rem", marginBottom: 16 }}>🛕</span>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.8rem", color: "var(--accent-gold)", margin: 0 }}>
-              Welcome to {yatra.title}
-            </h2>
-            <p style={{ maxWidth: 500, color: "var(--text-secondary)", fontSize: 13, marginTop: 8, marginBottom: 24 }}>
-              {yatra.description || "Begin your custom knowledge path. Choose a topic from the left sidebar to start your Sadhana session (timer, notes, and AI tutor reviews)."}
-            </p>
-
-            {/* General Stats */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 32 }}>
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Completed</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--color-success)" }}>
-                  {stats.completedItems} / {stats.totalItems}
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Time Spent</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "var(--accent-gold)" }}>
-                  {formatDuration(stats.totalTime)}
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: "12px 24px", minWidth: 120, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase" }}>Target Duration</div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: "#38bdf8" }}>
-                  {formatTargetDuration(stats.targetTime)}
-                </div>
-              </div>
-            </div>
-
-            {/* Sanskrit Quote Banner */}
-            <div style={{ padding: "16px 20px", background: "rgba(243,156,18,0.02)", border: "1px solid rgba(243,156,18,0.1)", borderRadius: "var(--radius-md)", maxWidth: 500 }}>
-              <div style={{ color: "var(--accent-gold)", fontWeight: 700, fontSize: 14, fontStyle: "italic", marginBottom: 6 }}>
-                "ज्ञानेन सदृशं पवित्रमिह विद्यते।"
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                "Indeed, there is nothing in this world as purifying as knowledge." — Bhagavad Gita (4.38)
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
