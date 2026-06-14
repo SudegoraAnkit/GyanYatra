@@ -2307,92 +2307,275 @@ body {
   }
 }
 
-/* Custom Yatra Workspace Toggle Styles */
-.yatra-tracker-main.standard .yatra-tracker-left-pane {
-  flex: 1.2;
+/* Custom Yatra Workspace Themed Layout Styles */
+.yatra-tracker-sidebar {
+  width: 320px;
+  min-width: 320px;
   border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  padding: 20px;
+  height: 100%;
 }
 
-.yatra-tracker-main.standard .yatra-tracker-right-pane {
+.yatra-tracker-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.yatra-tracker-workspace-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
-.yatra-tracker-main.standard .yatra-video-wrapper {
+.yatra-tracker-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+}
+
+.yatra-sadhana-workspace {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Ekagrata Mode (isTheaterMode === false) - balanced 2-column layout */
+.yatra-sadhana-workspace.workspace-ekagrata {
+  grid-template-columns: 1fr 1fr;
+}
+
+.yatra-sadhana-workspace.workspace-ekagrata .yatra-sadhana-media-pane {
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 16px;
+}
+
+.yatra-sadhana-workspace.workspace-ekagrata .yatra-sadhana-acharya-pane {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Vistara Mode (isTheaterMode === true) - media spans 72%, right pane behaves as sticky sidebar */
+.yatra-sadhana-workspace.workspace-vistara {
+  grid-template-columns: 72% 28%;
+}
+
+.yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-media-pane {
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 16px;
+}
+
+.yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-acharya-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 24px;
+}
+
+/* Media Wrapper and Containers */
+.yatra-video-wrapper {
   width: 100%;
 }
 
-.yatra-tracker-main.standard .yatra-notes-wrapper {
+.yatra-video-container {
   width: 100%;
-  margin-top: 16px;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.yatra-video-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-muted);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.yatra-video-link-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.yatra-video-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.yatra-video-input:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+/* Notes Containers */
+.yatra-sadhana-notes {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.yatra-notes-container {
   display: flex;
   flex-direction: column;
   flex: 1;
+  height: 100%;
 }
 
-.yatra-tracker-main.theater .yatra-tracker-right-pane {
-  display: none !important;
+.yatra-notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
-.yatra-tracker-main.theater .yatra-tracker-left-pane {
-  display: flex !important;
-  flex-direction: row !important;
-  height: 100% !important;
-  width: 100% !important;
-  flex: 1 !important;
-  overflow: hidden !important;
-  padding: 20px !important;
-  gap: 24px !important;
-  border-right: none !important;
+.yatra-notes-textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 200px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: none;
+  line-height: 1.5;
+  transition: border-color 0.2s;
 }
 
-.yatra-tracker-main.theater .yatra-video-wrapper {
-  flex: 7.2 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  overflow-y: auto !important;
-  padding-right: 8px !important;
+.yatra-notes-textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
 }
 
-.yatra-tracker-main.theater .yatra-notes-wrapper {
-  flex: 2.8 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  border-left: 1px solid var(--border-color) !important;
-  padding-left: 24px !important;
-  overflow-y: auto !important;
+/* AI Acharya Panel layout styling */
+.yatra-acharya-panel {
+  display: flex;
+  flex-direction: column;
 }
 
+.yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-panel {
+  flex: 1;
+  overflow: hidden;
+}
+
+.yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.yatra-sadhana-workspace.workspace-vistara .yatra-acharya-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.yatra-sadhana-workspace.workspace-vistara .yatra-acharya-body {
+  overflow-y: visible;
+}
+
+.yatra-acharya-body {
+  padding: 20px;
+}
+
+/* Responsive Overrides (max-width: 768px) */
 @media (max-width: 768px) {
-  .yatra-tracker-main.theater .yatra-tracker-left-pane {
-    flex-direction: column !important;
-    overflow-y: visible !important;
-    gap: 16px !important;
-    height: auto !important;
+  .yatra-tracker-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
   }
   
-  .yatra-tracker-main.theater .yatra-video-wrapper {
-    flex: none !important;
+  .yatra-tracker-sidebar {
     width: 100% !important;
-    height: auto !important;
-    overflow-y: visible !important;
-    padding-right: 0 !important;
+    min-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 300px;
+    overflow-y: auto;
   }
   
-  .yatra-tracker-main.theater .yatra-notes-wrapper {
+  .yatra-tracker-body {
     flex: none !important;
-    width: 100% !important;
     height: auto !important;
-    border-left: none !important;
-    padding-left: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .yatra-sadhana-workspace.workspace-ekagrata,
+  .yatra-sadhana-workspace.workspace-vistara {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .yatra-sadhana-media-pane,
+  .yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-media-pane {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px !important;
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+  
+  .yatra-sadhana-acharya-pane,
+  .yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-acharya-pane {
+    padding: 16px !important;
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+  
+  .yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-panel,
+  .yatra-sadhana-workspace.workspace-vistara .yatra-acharya-panel {
+    flex: none !important;
+    overflow: visible !important;
+  }
+  
+  .yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-body,
+  .yatra-sadhana-workspace.workspace-vistara .yatra-acharya-body {
+    flex: none !important;
+    overflow-y: visible !important;
   }
 }
 

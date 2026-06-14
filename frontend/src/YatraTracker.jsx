@@ -20,7 +20,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("sadhana"); // "sadhana" or "chat"
   const [justMeditatedTopicId, setJustMeditatedTopicId] = useState(null);
-  const [layoutMode, setLayoutMode] = useState("standard"); // "standard" or "theater"
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -406,6 +406,25 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     );
   };
 
+  const renderNotesBlock = () => (
+    <div className="yatra-sadhana-notes">
+      <div className="yatra-notes-container">
+        <div className="yatra-notes-header">
+          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
+          <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
+            Save Notes
+          </button>
+        </div>
+        <textarea
+          placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
+          className="yatra-notes-textarea"
+          value={notesInput}
+          onChange={(e) => setNotesInput(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="yatra-tracker-container">
       {/* Sidebar: Topic tree */}
@@ -447,14 +466,14 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       {/* Main Panel: Topic Study Space */}
       <div className="yatra-tracker-body">
         {selectedTopic ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div className="yatra-tracker-workspace-wrapper">
             {/* Topic Header & Timer */}
-            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-secondary)" }}>
+            <div className="yatra-tracker-header">
               <div>
                 <span style={{ fontSize: 11, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.05em" }}>Sadhana Topic</span>
                 <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "2px 0 0 0", fontFamily: "var(--font-display)" }}>{selectedTopic.title || "Untitled"}</h2>
               </div>
-
+ 
               {/* Study Timer Panel */}
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: timerRunning ? "rgba(243,156,18,0.1)" : "rgba(255,255,255,0.03)", borderRadius: "var(--radius-sm)", border: timerRunning ? "1px solid var(--accent-gold)" : "1px solid var(--border-color)" }}>
@@ -468,7 +487,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                     </span>
                   )}
                 </div>
-
+ 
                 <button
                   onClick={() => {
                     if (timerRunning) {
@@ -482,42 +501,62 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                 >
                   {timerRunning ? "Stop Timer" : "Start Study"}
                 </button>
+ 
+                {/* Vistara/Ekagrata Mode Toggle Button next to Start Study */}
+                <button
+                  onClick={() => setIsTheaterMode(!isTheaterMode)}
+                  className="btn btn-secondary"
+                  style={{ minHeight: "auto", padding: "6px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+                  title={isTheaterMode ? "Switch to Ekagrata Mode (Focus Layout)" : "Switch to Vistara Mode (Expanded Layout)"}
+                >
+                  {isTheaterMode ? (
+                    <>
+                      <Minimize size={14} />
+                      <span>Ekagrata Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize size={14} />
+                      <span>Vistara Mode</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-
+ 
             {/* Split Screen Workspace */}
-            <div className={`yatra-tracker-main ${layoutMode}`}>
+            <div className={`yatra-sadhana-workspace ${isTheaterMode ? "workspace-vistara" : "workspace-ekagrata"}`}>
               {/* Left Column: Media & Notes */}
-              <div className="yatra-tracker-left-pane">
+              <div className="yatra-sadhana-media-pane">
                 <div className="yatra-video-wrapper">
                   {/* Title / Action bar */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Video</span>
                     {videoId && (
                       <button
-                        onClick={() => setLayoutMode(layoutMode === "standard" ? "theater" : "standard")}
+                        onClick={() => setIsTheaterMode(!isTheaterMode)}
                         className="btn btn-secondary"
                         style={{ minHeight: "auto", padding: "4px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
-                        title={layoutMode === "standard" ? "Switch to Theater Mode" : "Switch to Standard Mode"}
+                        title={isTheaterMode ? "Switch to Ekagrata Mode (Focus Layout)" : "Switch to Vistara Mode (Expanded Layout)"}
                       >
-                        {layoutMode === "standard" ? (
+                        {isTheaterMode ? (
                           <>
-                            <Maximize size={12} />
-                            <span>Theater Mode</span>
+                            <Minimize size={12} />
+                            <span>Ekagrata Mode</span>
                           </>
                         ) : (
                           <>
-                            <Minimize size={12} />
-                            <span>Standard Mode</span>
+                            <Maximize size={12} />
+                            <span>Vistara Mode</span>
                           </>
                         )}
                       </button>
                     )}
                   </div>
-
+ 
                   {/* Embedded YouTube Frame */}
                   {videoId ? (
-                    <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "16px", border: "1px solid var(--border-color)" }}>
+                    <div className="yatra-video-container">
                       <iframe
                         width="100%"
                         height="100%"
@@ -529,253 +568,242 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                       />
                     </div>
                   ) : (
-                    <div style={{ width: "100%", aspectRatio: "16/9", background: "rgba(0,0,0,0.3)", borderRadius: "var(--radius-md)", border: "1px dashed var(--border-color)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", gap: 8, marginBottom: "16px" }}>
+                    <div className="yatra-video-placeholder">
                       <Play size={32} />
                       <span style={{ fontSize: 13 }}>No YouTube video linked. Paste a link below to study.</span>
                     </div>
                   )}
-
+ 
                   {/* Link Paste / Auto Discovery */}
-                  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  <div className="yatra-video-link-row">
                     <input
                       type="text"
                       placeholder="Paste YouTube Video URL..."
                       value={videoUrlInput}
                       onChange={(e) => setVideoUrlInput(e.target.value)}
-                      style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
+                      className="yatra-video-input"
                     />
                     <button onClick={discoverVideoTitle} disabled={isDiscovering || !videoUrlInput} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 13 }}>
                       {isDiscovering ? <Loader size={14} className="spinner" /> : <Sparkles size={14} />} Auto-Discover
                     </button>
                   </div>
                 </div>
-
-                <div className="yatra-notes-wrapper">
-                  {/* Seeker's Sadhana Notes */}
-                  <div style={{ display: "flex", flexDirection: "column", flex: 1, height: "100%" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Reflection Notes</label>
-                      <button onClick={saveNotesAndVideo} className="btn btn-secondary" style={{ padding: "4px 10px", minHeight: "auto", fontSize: 12 }}>
-                        Save Notes
-                      </button>
-                    </div>
-                    <textarea
-                      placeholder="Write detailed engineering notes, code trials, summaries, or questions. The Acharya will grade you on depth and completeness..."
-                      value={notesInput}
-                      onChange={(e) => setNotesInput(e.target.value)}
-                      style={{ width: "100%", flex: 1, minHeight: "200px", background: "rgba(0,0,0,0.25)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "12px 14px", borderRadius: 8, fontFamily: "monospace", fontSize: 13, resize: "none", lineHeight: 1.5 }}
-                    />
-                  </div>
-                </div>
+ 
+                {/* Seeker's Sadhana Notes rendered in left column if NOT in Vistara mode */}
+                {!isTheaterMode && renderNotesBlock()}
               </div>
-
-              {/* Right Column: AI Acharya panel */}
-              <div className="yatra-tracker-right-pane">
-                
-                {/* Tabs */}
-                <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", background: "var(--bg-secondary)" }}>
-                  <button onClick={() => setActiveTab("sadhana")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "sadhana" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "sadhana" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                    🧘 Acharya Review
-                  </button>
-                  <button onClick={() => setActiveTab("chat")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "chat" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "chat" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                    💬 Sadhana Chat Tutor
-                  </button>
-                </div>
-
-                {/* Tab Contents */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-                  
-                  {activeTab === "sadhana" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      {isMeditating ? (
-                        <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                          <Loader size={36} className="spinner" style={{ color: "var(--accent-gold)" }} />
-                          <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Acharya is Meditating</h4>
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
-                            Reviewing notes, assessing understanding depth, and preparing active recall questions...
-                          </p>
-                        </div>
-                      ) : selectedTopic.aiAnalysis ? (
-                        <div>
-                          {/* Score and Overview */}
-                          <div className="card" style={{ background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.15)", padding: 16, borderRadius: 8, marginBottom: 16 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                              <span style={{ fontSize: 12, textTransform: "uppercase", color: "var(--color-success)", fontWeight: 600, letterSpacing: "0.05em" }}>Evaluation Complete</span>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                <Award size={16} style={{ color: "var(--accent-gold)" }} />
-                                <span style={{ fontWeight: 700, fontSize: 15 }}>{selectedTopic.aiAnalysis.score || 0} Karma</span>
-                              </div>
-                            </div>
-                            
-                            {/* Sanskrit quote display */}
-                            <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-primary)", fontStyle: "italic", margin: 0 }}>
-                              {selectedTopic.id === justMeditatedTopicId ? (
-                                <TypewriterText text={selectedTopic.aiAnalysis.feedback} />
-                              ) : (
-                                selectedTopic.aiAnalysis.feedback
-                              )}
+ 
+              {/* Right Column: Notes (in Vistara mode) & AI Acharya panel */}
+              <div className="yatra-sadhana-acharya-pane">
+                {/* Seeker's Sadhana Notes rendered in right column if IN Vistara mode */}
+                {isTheaterMode && renderNotesBlock()}
+ 
+                <div className="yatra-acharya-panel">
+                  {/* Tabs */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", background: "var(--bg-secondary)" }}>
+                    <button onClick={() => setActiveTab("sadhana")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "sadhana" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "sadhana" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                      🧘 Acharya Review
+                    </button>
+                    <button onClick={() => setActiveTab("chat")} style={{ flex: 1, padding: "12px", background: "none", border: "none", borderBottom: activeTab === "chat" ? "2px solid var(--accent-gold)" : "none", color: activeTab === "chat" ? "var(--accent-gold)" : "var(--text-secondary)", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                      💬 Sadhana Chat Tutor
+                    </button>
+                  </div>
+ 
+                  {/* Tab Contents */}
+                  <div className="yatra-acharya-body">
+                    
+                    {activeTab === "sadhana" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        {isMeditating ? (
+                          <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                            <Loader size={36} className="spinner" style={{ color: "var(--accent-gold)" }} />
+                            <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Acharya is Meditating</h4>
+                            <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
+                              Reviewing notes, assessing understanding depth, and preparing active recall questions...
                             </p>
                           </div>
-
-                          {/* Concepts Grasped */}
-                          <div style={{ marginBottom: 16 }}>
-                            <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Grasped Concepts</h4>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                              {selectedTopic.aiAnalysis.identifiedConcepts?.map((c, i) => (
-                                <span key={i} style={{ fontSize: 11, padding: "3px 8px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 4, color: "#9bf" }}>
-                                  {c}
-                                </span>
-                              ))}
+                        ) : selectedTopic.aiAnalysis ? (
+                          <div>
+                            {/* Score and Overview */}
+                            <div className="card" style={{ background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.15)", padding: 16, borderRadius: 8, marginBottom: 16 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                <span style={{ fontSize: 12, textTransform: "uppercase", color: "var(--color-success)", fontWeight: 600, letterSpacing: "0.05em" }}>Evaluation Complete</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <Award size={16} style={{ color: "var(--accent-gold)" }} />
+                                  <span style={{ fontWeight: 700, fontSize: 15 }}>{selectedTopic.aiAnalysis.score || 0} Karma</span>
+                                </div>
+                              </div>
+                              
+                              {/* Sanskrit quote display */}
+                              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-primary)", fontStyle: "italic", margin: 0 }}>
+                                {selectedTopic.id === justMeditatedTopicId ? (
+                                  <TypewriterText text={selectedTopic.aiAnalysis.feedback} />
+                                ) : (
+                                  selectedTopic.aiAnalysis.feedback
+                                )}
+                              </p>
                             </div>
-                          </div>
-
-                          {/* Gap Suggestions */}
-                          {selectedTopic.aiAnalysis.gapSuggestions?.length > 0 && (
+ 
+                            {/* Concepts Grasped */}
                             <div style={{ marginBottom: 16 }}>
-                              <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Gaps in Understanding</h4>
-                              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                                {selectedTopic.aiAnalysis.gapSuggestions.map((g, i) => (
-                                  <li key={i}>{g}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {/* Reference Trials (Practice) */}
-                          {selectedTopic.aiAnalysis.relevantTrials?.length > 0 && (
-                            <div style={{ marginBottom: 24 }}>
-                              <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Recommended Trials (Practice Links)</h4>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                {selectedTopic.aiAnalysis.relevantTrials.map((link, i) => (
-                                  <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyBetween: "space-between", gap: 8, padding: "8px 12px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 6, color: "var(--accent-gold)", fontSize: 12, textDecoration: "none" }}>
-                                    <span style={{ flex: 1, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{link}</span>
-                                    <ExternalLink size={12} />
-                                  </a>
+                              <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Grasped Concepts</h4>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {selectedTopic.aiAnalysis.identifiedConcepts?.map((c, i) => (
+                                  <span key={i} style={{ fontSize: 11, padding: "3px 8px", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 4, color: "#9bf" }}>
+                                    {c}
+                                  </span>
                                 ))}
                               </div>
                             </div>
-                          )}
-
-                          {/* Active Recall Quiz */}
-                          {selectedTopic.aiAnalysis.recallQuestions?.length > 0 && (
-                            <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 16 }}>
-                              <h4 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                                <Sparkles size={16} /> Active Recall Challenge
-                              </h4>
-
-                              {quizSubmitted ? (
-                                <div style={{ padding: "12px 14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                                  <CheckCircle size={20} style={{ color: "var(--color-success)" }} />
-                                  <div>
-                                    <div style={{ fontSize: 13, fontWeight: 600 }}>Challenge Accomplished!</div>
-                                    <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Your answers have been registered, and +15 Karma points have been awarded.</div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <form onSubmit={handleQuizSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                                  {selectedTopic.aiAnalysis.recallQuestions.map((q, idx) => (
-                                    <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                      <label style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{idx + 1}. {q}</label>
-                                      <input
-                                        type="text"
-                                        placeholder="Write your answer..."
-                                        value={quizAnswers[idx]}
-                                        onChange={(e) => {
-                                          const next = [...quizAnswers];
-                                          next[idx] = e.target.value;
-                                          setQuizAnswers(next);
-                                        }}
-                                        style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 4, fontSize: 12 }}
-                                      />
-                                    </div>
+ 
+                            {/* Gap Suggestions */}
+                            {selectedTopic.aiAnalysis.gapSuggestions?.length > 0 && (
+                              <div style={{ marginBottom: 16 }}>
+                                <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Gaps in Understanding</h4>
+                                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                                  {selectedTopic.aiAnalysis.gapSuggestions.map((g, i) => (
+                                    <li key={i}>{g}</li>
                                   ))}
-                                  <button type="submit" className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", minHeight: "auto", fontSize: 13, marginTop: 6 }}>
-                                    Submit Answers & Claim Karma (+15)
-                                  </button>
-                                </form>
-                              )}
+                                </ul>
+                              </div>
+                            )}
+ 
+                            {/* Reference Trials (Practice) */}
+                            {selectedTopic.aiAnalysis.relevantTrials?.length > 0 && (
+                              <div style={{ marginBottom: 24 }}>
+                                <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Recommended Trials (Practice Links)</h4>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {selectedTopic.aiAnalysis.relevantTrials.map((link, i) => (
+                                    <a key={i} href={link} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 12px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-color)", borderRadius: 6, color: "var(--accent-gold)", fontSize: 12, textDecoration: "none" }}>
+                                      <span style={{ flex: 1, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{link}</span>
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+ 
+                            {/* Active Recall Quiz */}
+                            {selectedTopic.aiAnalysis.recallQuestions?.length > 0 && (
+                              <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 16 }}>
+                                <h4 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                                  <Sparkles size={16} /> Active Recall Challenge
+                                </h4>
+ 
+                                {quizSubmitted ? (
+                                  <div style={{ padding: "12px 14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                                    <CheckCircle size={20} style={{ color: "var(--color-success)" }} />
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 600 }}>Challenge Accomplished!</div>
+                                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Your answers have been registered, and +15 Karma points have been awarded.</div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <form onSubmit={handleQuizSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                    {selectedTopic.aiAnalysis.recallQuestions.map((q, idx) => (
+                                      <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                        <label style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{idx + 1}. {q}</label>
+                                        <input
+                                          type="text"
+                                          placeholder="Write your answer..."
+                                          value={quizAnswers[idx] || ""}
+                                          onChange={(e) => {
+                                            const next = [...quizAnswers];
+                                            next[idx] = e.target.value;
+                                            setQuizAnswers(next);
+                                          }}
+                                          style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 4, fontSize: 12 }}
+                                        />
+                                      </div>
+                                    ))}
+                                    <button type="submit" className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", minHeight: "auto", fontSize: 13, marginTop: 6 }}>
+                                      Submit Answers & Claim Karma (+15)
+                                    </button>
+                                  </form>
+                                )}
+                              </div>
+                            )}
+ 
+                            {/* Re-Meditate */}
+                            <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+                              <button onClick={submitForMeditation} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 12 }}>
+                                <RefreshCw size={12} /> Re-Submit for Review
+                              </button>
                             </div>
-                          )}
-
-                          {/* Re-Meditate */}
-                          <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
-                            <button onClick={submitForMeditation} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", minHeight: "auto", fontSize: 12 }}>
-                              <RefreshCw size={12} /> Re-Submit for Review
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                            <span style={{ fontSize: "2rem" }}>🧘</span>
+                            <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Consult the Acharya</h4>
+                            <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
+                              Once you have taken study notes, submit them for evaluation. The Acharya will analyze your depth, suggest concepts, point out gaps, and formulate active recall challenges.
+                            </p>
+ 
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+                              <input
+                                type="checkbox"
+                                id="simulate"
+                                checked={simulateMeditation}
+                                onChange={(e) => setSimulateMeditation(e.target.checked)}
+                                style={{ cursor: "pointer" }}
+                              />
+                              <label htmlFor="simulate" style={{ fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}>
+                                Simulate offline review (free-tier / instant)
+                              </label>
+                            </div>
+ 
+                            <button onClick={submitForMeditation} className="btn btn-gold" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", fontSize: 13 }}>
+                              <Sparkles size={14} /> Submit for Acharya Review
                             </button>
                           </div>
+                        )}
+                      </div>
+                    )}
+ 
+                    {activeTab === "chat" && (
+                      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        {/* Chat Messages */}
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                          {chatHistory.length === 0 && (
+                            <div style={{ color: "var(--text-muted)", fontSize: 12, fontStyle: "italic", textAlign: "center", padding: 20 }}>
+                              The Acharya awaits your queries. Ask about replication, caching, or anything from the study notes.
+                            </div>
+                          )}
+                          {chatHistory.map((msg, i) => (
+                            <div key={i} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%", padding: "10px 12px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: msg.role === "user" ? "var(--color-primary-glow)" : "rgba(255,255,255,0.03)", border: msg.role === "user" ? "1px solid var(--color-primary)" : "1px solid var(--border-color)", whiteSpace: "pre-wrap" }}>
+                              <strong>{msg.role === "user" ? "Seeker: " : "Acharya: "}</strong>
+                              {msg.role === "assistant" && i === chatHistory.length - 1 ? (
+                                <TypewriterText text={msg.content} />
+                              ) : (
+                                msg.content
+                              )}
+                            </div>
+                          ))}
+                          {chatLoading && (
+                            <div style={{ alignSelf: "flex-start", padding: "10px 12px", background: "rgba(255,255,255,0.02)", border: "1px dashed var(--border-color)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <Loader size={12} className="spinner" /> Acharya is pondering...
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ textAlign: "center", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                          <span style={{ fontSize: "2rem" }}>🧘</span>
-                          <h4 style={{ fontFamily: "var(--font-display)", margin: 0 }}>Consult the Acharya</h4>
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)", maxWidth: 300, margin: 0 }}>
-                            Once you have taken study notes, submit them for evaluation. The Acharya will analyze your depth, suggest concepts, point out gaps, and formulate active recall challenges.
-                          </p>
-
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
-                            <input
-                              type="checkbox"
-                              id="simulate"
-                              checked={simulateMeditation}
-                              onChange={(e) => setSimulateMeditation(e.target.checked)}
-                              style={{ cursor: "pointer" }}
-                            />
-                            <label htmlFor="simulate" style={{ fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}>
-                              Simulate offline review (free-tier / instant)
-                            </label>
-                          </div>
-
-                          <button onClick={submitForMeditation} className="btn btn-gold" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", fontSize: 13 }}>
-                            <Sparkles size={14} /> Submit for Acharya Review
+ 
+                        {/* Chat Input */}
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            placeholder="Ask a doubt..."
+                            value={chatMessage}
+                            onChange={(e) => setChatMessage(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") sendChatMessage(); }}
+                            style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
+                          />
+                          <button onClick={sendChatMessage} className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", minHeight: "auto" }}>
+                            <Send size={14} />
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === "chat" && (
-                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                      {/* Chat Messages */}
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-                        {chatHistory.length === 0 && (
-                          <div style={{ color: "var(--text-muted)", fontSize: 12, fontStyle: "italic", textAlign: "center", padding: 20 }}>
-                            The Acharya awaits your queries. Ask about replication, caching, or anything from the study notes.
-                          </div>
-                        )}
-                        {chatHistory.map((msg, i) => (
-                          <div key={i} style={{ alignSelf: msg.role === "user" ? "flex-end" : "flex-start", maxWidth: "85%", padding: "10px 12px", borderRadius: 8, fontSize: 12, lineHeight: 1.5, background: msg.role === "user" ? "var(--color-primary-glow)" : "rgba(255,255,255,0.03)", border: msg.role === "user" ? "1px solid var(--color-primary)" : "1px solid var(--border-color)", whiteSpace: "pre-wrap" }}>
-                            <strong>{msg.role === "user" ? "Seeker: " : "Acharya: "}</strong>
-                            {msg.role === "assistant" && i === chatHistory.length - 1 ? (
-                              <TypewriterText text={msg.content} />
-                            ) : (
-                              msg.content
-                            )}
-                          </div>
-                        ))}
-                        {chatLoading && (
-                          <div style={{ alignSelf: "flex-start", padding: "10px 12px", background: "rgba(255,255,255,0.02)", border: "1px dashed var(--border-color)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <Loader size={12} className="spinner" /> Acharya is pondering...
-                          </div>
-                        )}
                       </div>
-
-                      {/* Chat Input */}
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input
-                          type="text"
-                          placeholder="Ask a doubt..."
-                          value={chatMessage}
-                          onChange={(e) => setChatMessage(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") sendChatMessage(); }}
-                          style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
-                        />
-                        <button onClick={sendChatMessage} className="btn btn-gold" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", minHeight: "auto" }}>
-                          <Send size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
+                    )}
+ 
+                  </div>
                 </div>
               </div>
             </div>
