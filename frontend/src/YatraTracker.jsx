@@ -363,8 +363,8 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     const isProgress = node.status === "in-progress";
 
     return (
-      <div style={{ marginLeft: depth > 0 ? "16px" : "0", borderLeft: depth > 0 ? "2px solid var(--border-color)" : "none", paddingLeft: depth > 0 ? "12px" : "0" }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", padding: "6px 8px", borderRadius: "var(--radius-sm)", background: isSelected ? "var(--accent-gold-glow)" : "transparent", border: isSelected ? "1px solid var(--accent-gold)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s" }}>
+      <div style={{ marginLeft: depth > 0 ? "20px" : "0px", borderLeft: depth > 0 ? "2px dashed rgba(255, 255, 255, 0.15)" : "none", paddingLeft: depth > 0 ? "16px" : "0px", marginBottom: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", background: isSelected ? "var(--accent-gold-glow)" : "transparent", border: isSelected ? "1px solid var(--accent-gold)" : "1px solid transparent", cursor: "pointer", transition: "all 0.2s" }}>
           
           {hasChildren ? (
             <button onClick={(e) => { e.stopPropagation(); toggleCollapse(node.id); }} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>

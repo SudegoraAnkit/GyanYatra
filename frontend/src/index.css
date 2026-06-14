@@ -2240,6 +2240,7 @@ body {
 
 .yatra-tracker-container {
   display: flex;
+  width: 100%;
   height: calc(100vh - 60px);
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -2349,11 +2350,12 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  gap: 24px;
 }
 
 /* Ekagrata Mode (isTheaterMode === false) - balanced 2-column layout */
 .yatra-sadhana-workspace.workspace-ekagrata {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
 }
 
 .yatra-sadhana-workspace.workspace-ekagrata .yatra-sadhana-media-pane {
@@ -2374,7 +2376,7 @@ body {
 
 /* Vistara Mode (isTheaterMode === true) - media spans 72%, right pane behaves as sticky sidebar */
 .yatra-sadhana-workspace.workspace-vistara {
-  grid-template-columns: 72% 28%;
+  grid-template-columns: 2.5fr 1fr;
 }
 
 .yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-media-pane {
