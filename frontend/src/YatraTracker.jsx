@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Play, Clock, Send, Loader, ExternalLink, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Play, Clock, Send, Loader, ExternalLink, Sparkles, ChevronDown, ChevronRight, Menu, BookOpen } from "lucide-react";
 
 export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -19,8 +19,10 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState("sadhana"); // "sadhana" or "chat"
   
-  // Custom Sidebar View State (Standard Split vs Wide Theater View)
+  // Responsive / View layout states
   const [isVistaraMode, setIsVistaraMode] = useState(false);
+  const [isTreeExpanded, setIsTreeExpanded] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState("video"); // "video", "notes", "acharya"
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
 
@@ -384,38 +386,39 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
 
   // Isolated Textarea Module
   const renderNotesContainer = (isTall) => (
-    <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1" }}>Sadhana Reflection Notes</label>
-        <span style={{ fontSize: 11, color: "#64748b" }}>Auto-saving Changes</span>
+    <div className={`yatra-notes-container-block ${isTall ? "tall" : ""}`}>
+      <div className="yatra-notes-header">
+        <label className="yatra-notes-label">Sadhana Reflection Notes</label>
+        <span className="yatra-notes-autosave-indicator">Auto-saving Changes</span>
       </div>
       <textarea
         placeholder="Type continuous reflection summaries here..."
         value={notesInput}
         onChange={(e) => handleNotesChange(e.target.value)}
-        style={{ 
-          width: "100%", height: isTall ? "340px" : "180px", background: "rgba(0,0,0,0.3)", 
-          border: "1px solid #475569", color: "#fff", padding: "12px", borderRadius: "6px", 
-          fontFamily: "monospace", fontSize: 13, resize: "none", lineHeight: 1.5 
-        }}
+        className="yatra-notes-textarea"
       />
     </div>
   );
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 60px)", width: "100%", background: "#0f172a", color: "#f8fafc", overflow: "hidden" }}>
+    <div className={`yatra-tracker-container ${isTreeExpanded ? "tree-expanded" : ""} mobile-view-${activeMobileTab}`}>
       
-      {/* LEFT NAVIGATION TREE PANE */}
-      <div style={{ width: "320px", minWidth: "320px", borderRight: "1px solid #334155", display: "flex", flexDirection: "column", background: "#1e293b", height: "100%" }}>
-        <div style={{ padding: "16px", borderBottom: "1px solid #334155" }}>
-          <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic.id, timerSeconds); } onBack(); }} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+      {/* Overlay Backdrop for Mobile Drawer */}
+      {isTreeExpanded && (
+        <div className="yatra-drawer-backdrop" onClick={() => setIsTreeExpanded(false)} />
+      )}
+
+      {/* LEFT NAVIGATION TREE PANE (COLLAPSIBLE / RESPONSIVE) */}
+      <div className={`yatra-tracker-sidebar-pane ${isTreeExpanded ? "expanded" : ""}`}>
+        <div className="yatra-sidebar-header">
+          <button onClick={() => { if (timerRunning) { saveTimeSpent(selectedTopic.id, timerSeconds); } onBack(); }} className="yatra-back-button">
             ← Gallery Index
           </button>
-          <h3 style={{ fontWeight: 700, fontSize: "1rem", margin: 0, color: "#10b981" }}>{yatra.title}</h3>
+          <h3 className="yatra-sidebar-title">{yatra.title}</h3>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          <span style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 12 }}>
+        <div className="yatra-sidebar-tree-container">
+          <span className="yatra-sidebar-legend">
             💡 Cycle completion: Click the circle icon symbols (○/●) inside the directory layout tree.
           </span>
           {yatra.topics?.map(topic => (
@@ -425,68 +428,98 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       </div>
 
       {/* RIGHT WORKSPACE CONTEXT ENGINE */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" }}>
+      <div className="yatra-tracker-workspace-pane">
         {selectedTopic ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div className="yatra-tracker-active-workspace">
             
             {/* Header Toolbar controls */}
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid #334155", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1e293b" }}>
-              <div>
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>{selectedTopic.title || "Selected Lesson"}</h2>
+            <div className="yatra-workspace-header">
+              <div className="yatra-header-left">
+                <button 
+                  onClick={() => setIsTreeExpanded(!isTreeExpanded)} 
+                  className="yatra-menu-toggle-button"
+                  title="Toggle Directory Menu"
+                >
+                  <Menu size={18} />
+                </button>
+                <h2 className="yatra-workspace-title">{selectedTopic.title || "Selected Lesson"}</h2>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="yatra-header-controls">
                 <button
                   onClick={() => setIsVistaraMode(!isVistaraMode)}
-                  style={{ background: isVistaraMode ? "rgba(16, 185, 129, 0.1)" : "rgba(255,255,255,0.05)", border: `1px solid ${isVistaraMode ? "#10b981" : "#475569"}`, color: isVistaraMode ? "#10b981" : "#cbd5e1", borderRadius: "6px", padding: "6px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}
+                  className={`yatra-layout-mode-button ${isVistaraMode ? "active" : ""}`}
                 >
                   {isVistaraMode ? "Standard Split View" : "Wide Theater View"}
                 </button>
-                <div style={{ fontFamily: "monospace", fontSize: 13, background: "rgba(0,0,0,0.2)", padding: "4px 8px", borderRadius: 4 }}>
+                <div className="yatra-study-timer-display">
                   ⏱ {formatDuration(timerSeconds || selectedTopic.timeSpent || 0)}
                 </div>
                 <button
                   onClick={() => setTimerRunning(!timerRunning)}
-                  style={{ background: timerRunning ? "#ef4444" : "#10b981", color: "#0f172a", border: "none", borderRadius: "6px", padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  className={`yatra-study-timer-button ${timerRunning ? "running" : ""}`}
                 >
                   {timerRunning ? "Stop" : "Study"}
                 </button>
               </div>
             </div>
 
+            {/* Mobile Workspace Segmented Tab Deck Controls */}
+            <div className="yatra-mobile-tabs-bar">
+              <button 
+                onClick={() => { setActiveMobileTab("video"); setIsTreeExpanded(false); }} 
+                className={`yatra-mobile-tab-btn ${activeMobileTab === "video" ? "active" : ""}`}
+              >
+                📺 Study Resource
+              </button>
+              <button 
+                onClick={() => { setActiveMobileTab("notes"); setIsTreeExpanded(false); }} 
+                className={`yatra-mobile-tab-btn ${activeMobileTab === "notes" ? "active" : ""}`}
+              >
+                📝 Reflection Notes
+              </button>
+              <button 
+                onClick={() => { setActiveMobileTab("acharya"); setIsTreeExpanded(false); }} 
+                className={`yatra-mobile-tab-btn ${activeMobileTab === "acharya" ? "active" : ""}`}
+              >
+                🧘 Acharya Review
+              </button>
+            </div>
+
             {/* SPLIT COLUMN VIEW GRID */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: isVistaraMode ? "1.8fr 1fr" : "1fr 1fr", overflow: "hidden" }}>
+            <div className={`yatra-sadhana-workspace ${isVistaraMode ? "workspace-vistara" : "workspace-ekagrata"}`}>
               
               {/* MEDIA DECK GRID CONTAINER */}
-              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", padding: "20px", borderRight: "1px solid #334155", height: "100%" }}>
+              <div className="yatra-sadhana-media-pane">
                 
-                {videoId ? (
-                  <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: "10px", overflow: "hidden" }}>
-                    <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={selectedTopic.title} frameBorder="0" allowFullScreen />
-                  </div>
-                ) : videoUrlInput && videoUrlInput.startsWith("http") ? (
-                  /* High-Visibility General Documentation Web Banner mapped with Green accents */
-                  <div style={{ width: "100%", padding: "32px 24px", background: "#1e293b", border: "2px dashed #475569", borderRadius: "10px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", textCenter: "center" }}>
-                    <ExternalLink size={36} style={{ color: "#10b981" }} />
-                    <span style={{ fontSize: "14px", color: "#cbd5e1", fontWeight: 600 }}>Linked Reference Resource:</span>
-                    <p style={{ margin: 0, fontSize: "12px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", width: "100%", textAlign: "center" }}>{videoUrlInput}</p>
-                    <a href={videoUrlInput} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 16px", background: "#10b981", color: "#0f172a", textDecoration: "none", borderRadius: "6px", fontSize: "13px", fontWeight: 700 }}>
-                      Open Study Resource Web Link ↗
-                    </a>
-                  </div>
-                ) : (
-                  <div style={{ width: "100%", aspectRatio: "16/9", background: "rgba(0,0,0,0.2)", borderRadius: "10px", border: "1px dashed #475569", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "#64748b" }}>
-                    <Play size={24} /> 
-                    <span style={{ fontSize: 12, marginTop: 6 }}>Paste YouTube link or reference Web address down below to begin study.</span>
-                  </div>
-                )}
+                <div className="yatra-video-wrapper">
+                  {videoId ? (
+                    <div className="yatra-video-container">
+                      <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={selectedTopic.title} frameBorder="0" allowFullScreen />
+                    </div>
+                  ) : videoUrlInput && videoUrlInput.startsWith("http") ? (
+                    <div className="yatra-resource-banner">
+                      <ExternalLink size={36} className="resource-icon" style={{ color: "#10b981" }} />
+                      <span className="resource-title">Linked Reference Resource:</span>
+                      <p className="resource-url">{videoUrlInput}</p>
+                      <a href={videoUrlInput} target="_blank" rel="noopener noreferrer" className="btn btn-gold yatra-resource-link">
+                        Open Study Resource Web Link ↗
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="yatra-video-placeholder">
+                      <Play size={24} /> 
+                      <span className="placeholder-text">Paste YouTube link or reference Web address down below to begin study.</span>
+                    </div>
+                  )}
+                </div>
 
                 <input
                   type="text"
                   placeholder="Paste YouTube Link or Documentation URL here..."
                   value={videoUrlInput}
                   onChange={(e) => handleUrlChange(e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid #475569", color: "#fff", padding: "8px 12px", borderRadius: 6, fontSize: 13 }}
+                  className="yatra-video-input"
                 />
 
                 {/* Show Notes underneath player ONLY during normal layout */}
@@ -494,38 +527,38 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
               </div>
 
               {/* INTEGRATED INTERACTIVE SIDEBAR WRAPPER CONTAINER */}
-              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", padding: "20px", gap: "16px", height: "100%" }}>
+              <div className="yatra-sadhana-acharya-pane">
                 
                 {/* Dynamically push Notes to the top of the Sidebar when wide view is activated */}
                 {isVistaraMode && renderNotesContainer(true)}
 
-                {/* AI Acharya tab section layout with updated Green selection borders */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", border: "1px solid #334155", borderRadius: "10px", background: "#1e293b", overflow: "hidden" }}>
-                  <div style={{ display: "flex", borderBottom: "1px solid #334155", background: "rgba(0,0,0,0.1)" }}>
-                    <button onClick={() => setActiveTab("sadhana")} style={{ flex: 1, padding: "10px", background: "none", border: "none", borderBottom: activeTab === "sadhana" ? "2px solid #10b981" : "none", color: activeTab === "sadhana" ? "#10b981" : "#94a3b8", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🧘 Acharya Review</button>
-                    <button onClick={() => setActiveTab("chat")} style={{ flex: 1, padding: "10px", background: "none", border: "none", borderBottom: activeTab === "chat" ? "2px solid #10b981" : "none", color: activeTab === "chat" ? "#10b981" : "#94a3b8", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>💬 Doubt Chat</button>
+                {/* AI Acharya tab section layout */}
+                <div className="yatra-acharya-panel">
+                  <div className="yatra-acharya-tabs-header">
+                    <button onClick={() => setActiveTab("sadhana")} className={`yatra-acharya-tab-btn ${activeTab === "sadhana" ? "active" : ""}`}>🧘 Acharya Review</button>
+                    <button onClick={() => setActiveTab("chat")} className={`yatra-acharya-tab-btn ${activeTab === "chat" ? "active" : ""}`}>💬 Doubt Chat</button>
                   </div>
 
-                  <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
+                  <div className="yatra-acharya-body">
                     {activeTab === "sadhana" && (
-                      <div style={{ textAlign: "center", padding: "10px" }}>
-                        <button onClick={submitForMeditation} style={{ background: "#10b981", color: "#0f172a", border: "none", padding: "8px 14px", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                      <div className="yatra-acharya-sadhana-review">
+                        <button onClick={submitForMeditation} className="btn btn-gold yatra-meditation-submit-btn">
                           Submit Notes for Acharya Evaluation
                         </button>
                       </div>
                     )}
                     {activeTab === "chat" && (
-                      <div style={{ display: "flex", flex: 1, flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", marginBottom: 12 }}>
+                      <div className="yatra-acharya-chat-tutor">
+                        <div className="yatra-chat-messages">
                           {chatHistory.map((msg, i) => (
-                            <div key={i} style={{ padding: "8px 10px", borderRadius: 6, fontSize: 12, background: "rgba(255,255,255,0.02)", border: "1px solid #334155" }}>
+                            <div key={i} className="yatra-chat-message-bubble">
                               <strong>{msg.role === "user" ? "You: " : "Acharya: "}</strong>{msg.content}
                             </div>
                           ))}
                         </div>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <input type="text" placeholder="Ask doubt..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&sendChatMessage()} style={{ flex: 1, background: "rgba(0,0,0,0.2)", border: "1px solid #475569", padding: "6px", color: "#fff", borderRadius: 4 }} />
-                          <button onClick={sendChatMessage} style={{ background: "#10b981", padding: "6px 12px", border: "none", borderRadius: 4 }}><Send size={12} /></button>
+                        <div className="yatra-chat-input-row">
+                          <input type="text" placeholder="Ask doubt..." value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&sendChatMessage()} className="yatra-chat-input" />
+                          <button onClick={sendChatMessage} className="yatra-chat-send-btn"><Send size={12} /></button>
                         </div>
                       </div>
                     )}
@@ -537,10 +570,10 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 40, textAlign: "center" }}>
-            <span style={{ fontSize: "2.5rem" }}>🛕</span>
-            <h2 style={{ fontWeight: 700, color: "#10b981", margin: "10px 0 0 0" }}>GyanYatra Study Space</h2>
-            <p style={{ color: "#94a3b8", fontSize: 13, maxWidth: 400 }}>Select a node topic from the left catalog index dashboard to initialize your learning session path mapping.</p>
+          <div className="yatra-workspace-empty-state">
+            <span className="empty-emoji">🛕</span>
+            <h2 className="empty-title">GyanYatra Study Space</h2>
+            <p className="empty-text">Select a node topic from the left catalog index dashboard to initialize your learning session path mapping.</p>
           </div>
         )}
       </div>
