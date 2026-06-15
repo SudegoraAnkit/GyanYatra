@@ -2575,62 +2575,558 @@ body {
   padding: 20px;
 }
 
-/* Responsive Overrides (max-width: 768px) */
-@media (max-width: 768px) {
-  .yatra-tracker-container {
-    flex-direction: column;
-    height: auto;
-    overflow: visible;
+/* ==========================================================================
+   YATRA WORKSPACE SPECIFIC DESIGN SYSTEM & RESPONSIVE RULES
+   ========================================================================== */
+
+/* Container & Base viewports */
+.yatra-tracker-container {
+  display: flex;
+  height: calc(100vh - 60px);
+  width: 100%;
+  background: #0f172a;
+  color: #f8fafc;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Sidebar Drawer Pane */
+.yatra-tracker-sidebar-pane {
+  width: 320px;
+  min-width: 320px;
+  border-right: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  background: #1e293b;
+  height: 100%;
+  transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+  z-index: 100;
+  -webkit-overflow-scrolling: touch;
+}
+
+.yatra-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #334155;
+}
+
+.yatra-back-button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 10px;
+  transition: color 0.2s;
+}
+
+.yatra-back-button:hover {
+  color: #10b981;
+}
+
+.yatra-sidebar-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin: 0;
+  color: #10b981;
+}
+
+.yatra-sidebar-tree-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.yatra-sidebar-legend {
+  font-size: 11px;
+  color: #64748b;
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Workspace Frame */
+.yatra-tracker-workspace-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+}
+
+.yatra-tracker-active-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Toolbar Header */
+.yatra-workspace-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e293b;
+}
+
+.yatra-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.yatra-menu-toggle-button {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  display: none; /* Desktop hidden */
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  transition: background 0.2s;
+}
+
+.yatra-menu-toggle-button:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.yatra-workspace-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.yatra-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.yatra-layout-mode-button {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.yatra-layout-mode-button.active {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.yatra-study-timer-display {
+  font-family: monospace;
+  font-size: 13px;
+  background: rgba(0,0,0,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.yatra-study-timer-button {
+  background: #10b981;
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.yatra-study-timer-button.running {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* Empty State Pane */
+.yatra-workspace-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-emoji {
+  font-size: 2.5rem;
+}
+
+.empty-title {
+  font-weight: 700;
+  color: #10b981;
+  margin: 10px 0 0 0;
+}
+
+.empty-text {
+  color: #94a3b8;
+  font-size: 13px;
+  max-width: 400px;
+}
+
+/* Mobile Segmented Tab Deck (Desktop hidden) */
+.yatra-mobile-tabs-bar {
+  display: none;
+  border-bottom: 1px solid #334155;
+  background: #1e293b;
+  padding: 8px 16px;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.yatra-mobile-tab-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid #334155;
+  color: #94a3b8;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.yatra-mobile-tab-btn.active {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+/* Notes Container Block */
+.yatra-notes-container-block {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.yatra-notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.yatra-notes-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.yatra-notes-autosave-indicator {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.yatra-notes-textarea {
+  width: 100%;
+  height: 180px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid #475569;
+  color: #fff;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 13px;
+  resize: none;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+
+.yatra-notes-container-block.tall .yatra-notes-textarea {
+  height: 340px;
+}
+
+.yatra-notes-textarea:focus {
+  outline: none;
+  border-color: #10b981;
+}
+
+/* Acharya Panel */
+.yatra-acharya-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #1e293b;
+  overflow: hidden;
+}
+
+.yatra-acharya-tabs-header {
+  display: flex;
+  border-bottom: 1px solid #334155;
+  background: rgba(0,0,0,0.1);
+}
+
+.yatra-acharya-tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.yatra-acharya-tab-btn.active {
+  border-bottom-color: #10b981;
+  color: #10b981;
+}
+
+.yatra-acharya-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+.yatra-acharya-sadhana-review {
+  text-align: center;
+  padding: 10px;
+}
+
+.yatra-meditation-submit-btn {
+  background: #10b981;
+  color: #0f172a;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.yatra-meditation-submit-btn:hover {
+  background: #059669;
+}
+
+.yatra-acharya-chat-tutor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.yatra-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.yatra-chat-message-bubble {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid #334155;
+  line-height: 1.4;
+}
+
+.yatra-chat-input-row {
+  display: flex;
+  gap: 4px;
+}
+
+.yatra-chat-input {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid #475569;
+  padding: 6px;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 16px; /* 16px prevents iOS browser auto-zoom */
+}
+
+.yatra-chat-send-btn {
+  background: #10b981;
+  padding: 6px 12px;
+  border: none;
+  color: #0f172a;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.yatra-chat-send-btn:hover {
+  background: #059669;
+}
+
+/* Mobile Drawer Overlay Backdrop */
+.yatra-drawer-backdrop {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 90;
+  backdrop-filter: blur(2px);
+}
+
+/* ==========================================================================
+   RESPONSIVE LAYOUT SPECIFICATIONS (TABLET & MOBILE OVERRIDES)
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+  /* Toggle Sidebar Panel into absolute Slide drawer on Mobile/Tablet */
+  .yatra-tracker-sidebar-pane {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
   }
   
-  .yatra-tracker-sidebar {
-    width: 100% !important;
-    min-width: 100% !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--border-color);
-    max-height: 300px;
-    overflow-y: auto;
+  .yatra-tracker-sidebar-pane.expanded {
+    transform: translateX(0);
   }
   
-  .yatra-tracker-body {
-    flex: none !important;
-    height: auto !important;
-    overflow: visible !important;
+  .yatra-menu-toggle-button {
+    display: flex;
   }
   
+  .yatra-drawer-backdrop {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Header adjustments */
+  .yatra-workspace-header {
+    padding: 10px 14px;
+  }
+  
+  .yatra-workspace-title {
+    max-width: 180px;
+    font-size: 1rem;
+  }
+  
+  .yatra-header-controls {
+    gap: 6px;
+  }
+  
+  .yatra-layout-mode-button {
+    display: none !important; /* Hide wide/split layout mode button on mobile */
+  }
+  
+  /* Show Mobile Segmented tab controller */
+  .yatra-mobile-tabs-bar {
+    display: flex;
+  }
+  
+  /* Convert workspace to single column flow controlled by tab deck */
   .yatra-sadhana-workspace.workspace-ekagrata,
   .yatra-sadhana-workspace.workspace-vistara {
-    grid-template-columns: 1fr !important;
+    display: block !important;
+    height: calc(100% - 50px) !important;
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Visibility Toggling for tabs without unmounting player */
+  .mobile-view-video .yatra-sadhana-media-pane {
+    display: flex !important;
+  }
+  
+  .mobile-view-video .yatra-video-wrapper {
     height: auto !important;
+    opacity: 1 !important;
     overflow: visible !important;
+    pointer-events: auto !important;
   }
   
-  .yatra-sadhana-media-pane,
-  .yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-media-pane {
-    border-right: none !important;
-    border-bottom: 1px solid var(--border-color);
+  .mobile-view-video .yatra-notes-container-block {
+    display: none !important; /* hide notes underneath video */
+  }
+  
+  .mobile-view-video .yatra-sadhana-acharya-pane {
+    display: none !important;
+  }
+  
+  .mobile-view-notes .yatra-sadhana-media-pane {
+    display: flex !important;
+  }
+  
+  /* Keep video container in DOM but hidden to prevent iframe unmounting */
+  .mobile-view-notes .yatra-video-wrapper {
+    height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  .mobile-view-notes .yatra-notes-container-block {
+    display: flex !important;
+    flex: 1;
+  }
+  
+  .mobile-view-notes .yatra-notes-textarea {
+    min-height: 250px !important;
+    font-size: 16px; /* prevent iOS auto-zoom */
+  }
+  
+  .mobile-view-notes .yatra-sadhana-acharya-pane {
+    display: none !important;
+  }
+  
+  .mobile-view-acharya .yatra-sadhana-media-pane {
+    display: none !important;
+  }
+  
+  .mobile-view-acharya .yatra-sadhana-acharya-pane {
+    display: flex !important;
+    height: 100% !important;
     padding: 16px !important;
-    height: auto !important;
-    overflow-y: visible !important;
   }
   
-  .yatra-sadhana-acharya-pane,
-  .yatra-sadhana-workspace.workspace-vistara .yatra-sadhana-acharya-pane {
-    padding: 16px !important;
-    height: auto !important;
-    overflow-y: visible !important;
-  }
-  
-  .yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-panel,
-  .yatra-sadhana-workspace.workspace-vistara .yatra-acharya-panel {
-    flex: none !important;
-    overflow: visible !important;
-  }
-  
-  .yatra-sadhana-workspace.workspace-ekagrata .yatra-acharya-body,
-  .yatra-sadhana-workspace.workspace-vistara .yatra-acharya-body {
-    flex: none !important;
-    overflow-y: visible !important;
+  .mobile-view-acharya .yatra-acharya-panel {
+    height: 100% !important;
   }
 }
 

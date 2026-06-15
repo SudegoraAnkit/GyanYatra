@@ -646,6 +646,8 @@ function App() {
   const [lastAnalyzedJournalId, setLastAnalyzedJournalId] = useState(null)
 
   const pollingRef = useRef(null)
+  const saveYatraDebounceRef = useRef(null)
+  const latestYatraDataRef = useRef(null)
 
   // Compute live streaks & category stats
   const streaks = useMemo(() => calculateStreaks(journals, roadmapData), [journals, roadmapData])
@@ -765,37 +767,93 @@ function App() {
     }
   }, [user, fetchYatras]);
 
-  const handleSaveYatra = async (yatraData) => {
+  const handleSaveYatra = async (yatraData, immediate = false) => {
     if (!user || !user.token) return;
-    try {
-      const method = yatraData.id ? 'PUT' : 'POST';
-      const url = yatraData.id ? `${API_BASE}/yatras/${yatraData.id}` : `${API_BASE}/yatras`;
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(yatraData)
-      });
-      if (res.ok) {
-        const saved = await res.json();
-        setSuccessMsg(yatraData.id ? "SatsangYatra structure successfully saved!" : "New Lakshya successfully created!");
-        setTimeout(() => setSuccessMsg(''), 5000);
-        fetchYatras();
-        setSelectedYatra(saved);
-        setSelectedYatraMode('tracker');
-        setCurrentView('yatra-tracker');
-      } else {
-        setErrorMsg("Failed to save Yatra structure.");
-        setTimeout(() => setErrorMsg(''), 5000);
+
+    // 1. Update local UI states immediately to prevent input lag/overwriting
+    if (yatraData.id) {
+      setSelectedYatra(yatraData);
+      setMyYatras(prev => prev.map(y => y.id === yatraData.id ? yatraData : y));
+    }
+    
+    latestYatraDataRef.current = yatraData;
+
+    if (saveYatraDebounceRef.current) {
+      clearTimeout(saveYatraDebounceRef.current);
+      saveYatraDebounceRef.current = null;
+    }
+
+    const performSync = async () => {
+      try {
+        const dataToSave = latestYatraDataRef.current || yatraData;
+        const method = dataToSave.id ? 'PUT' : 'POST';
+        const url = dataToSave.id ? `${API_BASE}/yatras/${dataToSave.id}` : `${API_BASE}/yatras`;
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify(dataToSave)
+        });
+        if (res.ok) {
+          const saved = await res.json();
+          // Avoid notification alerts on keystroke auto-saves
+          if (shouldBeImmediate) {
+            setSuccessMsg(dataToSave.id ? "SatsangYatra structure successfully saved!" : "New Lakshya successfully created!");
+            setTimeout(() => setSuccessMsg(''), 5000);
+          }
+          fetchYatras();
+          // Update selected yatra to bind correct IDs if creating new
+          if (!dataToSave.id || method === 'POST') {
+            setSelectedYatra(saved);
+          }
+        } else {
+          if (shouldBeImmediate) {
+            setErrorMsg("Failed to save Yatra structure.");
+            setTimeout(() => setErrorMsg(''), 5000);
+          }
+        }
+      } catch (e) {
+        console.error("Save Yatra error:", e);
+        if (shouldBeImmediate) {
+          setErrorMsg("Error connecting to server while saving Yatra.");
+          setTimeout(() => setErrorMsg(''), 5000);
+        }
       }
-    } catch (e) {
-      console.error("Save Yatra error:", e);
-      setErrorMsg("Error connecting to server while saving Yatra.");
-      setTimeout(() => setErrorMsg(''), 5000);
+    };
+
+    const isFromDesigner = currentView === 'yatra-designer';
+    const shouldBeImmediate = immediate || isFromDesigner || !yatraData.id;
+
+    if (shouldBeImmediate) {
+      await performSync();
+    } else {
+      saveYatraDebounceRef.current = setTimeout(performSync, 1200); // 1.2s debounce
     }
   };
+
+  // Cleanup / flush yatra sync on unmount or user change
+  useEffect(() => {
+    return () => {
+      if (saveYatraDebounceRef.current) {
+        clearTimeout(saveYatraDebounceRef.current);
+        const data = latestYatraDataRef.current;
+        if (data && user && user.token) {
+          const method = data.id ? 'PUT' : 'POST';
+          const url = data.id ? `${API_BASE}/yatras/${data.id}` : `${API_BASE}/yatras`;
+          fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify(data)
+          }).catch(err => console.error("Failed final sync:", err));
+        }
+      }
+    };
+  }, [user]);
 
   const recordStudyEvent = useCallback((topicId, status, seconds = 0) => {
     const todayStr = getLocalYMD(new Date());
