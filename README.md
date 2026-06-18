@@ -1,5 +1,8 @@
 # GyanYatra: AI-Powered Learning Synthesizer & Mastery Dashboard
 
+----
+> [Access now](https://gyan-yatra-seven.vercel.app/)
+----
 GyanYatra is a production-grade, AI-powered learning organizer that transforms passive video content consumption (e.g., YouTube lectures, system design talks, coding tutorials) into verified active technical mastery. By forcing active cognitive reflection, generating automated gap analyses, providing spaced repetition prompts, and incentivizing consistency through gamified study streaks and community leaderboards, GyanYatra bridges the gap between understanding a tutorial and mastering a skill.
 
 ---
