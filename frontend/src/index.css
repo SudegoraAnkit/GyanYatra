@@ -2843,6 +2843,15 @@ body {
 .yatra-notes-autosave-indicator {
   font-size: 11px;
   color: #64748b;
+  transition: color 0.3s ease;
+}
+
+.yatra-notes-autosave-indicator.saving {
+  color: #f59e0b; /* Amber */
+}
+
+.yatra-notes-autosave-indicator.saved {
+  color: #10b981; /* Green */
 }
 
 .yatra-notes-textarea {
@@ -3130,3 +3139,11 @@ body {
   }
 }
 
+@keyframes spin-status {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.status-circle.in-progress {
+  animation: spin-status 1.2s linear infinite;
+}
