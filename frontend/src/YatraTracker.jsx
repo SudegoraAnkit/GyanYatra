@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Play, Clock, Send, Loader, ExternalLink, Sparkles, ChevronDown, ChevronRight, Menu, BookOpen } from "lucide-react";
 
-export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy }) {
+export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordStudy, roadmapData, isSaving }) {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
@@ -25,6 +25,33 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
   const [activeMobileTab, setActiveMobileTab] = useState("video"); // "video", "notes", "acharya"
 
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
+
+  // Keep selectedTopic in sync with the latest data from the yatra prop
+  useEffect(() => {
+    if (selectedTopic) {
+      const findTopic = (list, id) => {
+        for (let item of list) {
+          if (item.id === id) return item;
+          if (item.subtopics && item.subtopics.length > 0) {
+            const found = findTopic(item.subtopics, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const latest = findTopic(yatra.topics || [], selectedTopic.id);
+      if (latest) {
+        setSelectedTopic(latest);
+      }
+    }
+  }, [yatra, selectedTopic?.id]);
+
+  // Auto-select first topic on load
+  useEffect(() => {
+    if (!selectedTopic && yatra.topics && yatra.topics.length > 0) {
+      selectTopic(yatra.topics[0]);
+    }
+  }, [yatra.topics, selectedTopic]);
 
   // Toggle Collapse
   const toggleCollapse = (id) => {
@@ -122,6 +149,32 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     return config[status] || config["not-started"];
   };
 
+  const renderStatusCircle = (status, color) => {
+    switch (status) {
+      case "done":
+        return (
+          <span className="status-circle done" style={{ display: "inline-flex", width: 14, height: 14, borderRadius: "50%", background: color, border: `1.5px solid ${color}`, position: "relative" }}>
+            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 4, height: 4, borderRadius: "50%", background: "#fff" }} />
+          </span>
+        );
+      case "in-progress":
+        return (
+          <span className="status-circle in-progress" style={{ display: "inline-flex", width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${color}`, borderTopColor: "transparent" }} />
+        );
+      case "needs-revision":
+        return (
+          <span className="status-circle needs-revision" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${color}` }}>
+            <span style={{ fontSize: 9, fontWeight: "bold", color, lineHeight: 1 }}>↺</span>
+          </span>
+        );
+      case "not-started":
+      default:
+        return (
+          <span className="status-circle not-started" style={{ display: "inline-flex", width: 14, height: 14, borderRadius: "50%", border: `1.5px solid ${color}` }} />
+        );
+    }
+  };
+
   const cycleStatus = (topicId) => {
     const statusCycle = ["not-started", "in-progress", "done", "needs-revision"];
     let nextStatus = "not-started";
@@ -217,7 +270,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       });
       if (res.ok) {
         const updated = await res.json();
-        onUpdate(updated);
+        onUpdate(updated, false, true); // Update local state, skip redundant DB PUT sync
         alert("Acharya review completed successfully!");
       }
     } catch (e) {
@@ -281,10 +334,23 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
       });
       if (res.ok) {
         setQuizSubmitted(true);
+        if (onRecordStudy) {
+          onRecordStudy(selectedTopic.id, selectedTopic.status || "done", 0, true);
+        }
         alert("Dhanyavaad! You are awarded +15 Karma points!");
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleTimerToggle = () => {
+    if (timerRunning) {
+      saveTimeSpent(selectedTopic.id, timerSeconds);
+      setTimerRunning(false);
+      setTimerSeconds(0);
+    } else {
+      setTimerRunning(true);
     }
   };
 
@@ -344,8 +410,8 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
             </button>
           ) : <div style={{ width: 14 }} />}
 
-          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", color: statusCfg.color, cursor: "pointer", fontSize: 14, fontWeight: 700 }}>
-            {statusCfg.icon}
+          <button onClick={(e) => { e.stopPropagation(); cycleStatus(node.id); }} style={{ background: "none", border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+            {renderStatusCircle(node.status, statusCfg.color)}
           </button>
 
           <div onClick={() => selectTopic(node)} style={{ flex: 1, fontSize: 13, color: isSelected ? "#ffffff" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -389,7 +455,9 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
     <div className={`yatra-notes-container-block ${isTall ? "tall" : ""}`}>
       <div className="yatra-notes-header">
         <label className="yatra-notes-label">Sadhana Reflection Notes</label>
-        <span className="yatra-notes-autosave-indicator">Auto-saving Changes</span>
+        <span className={`yatra-notes-autosave-indicator ${isSaving ? "saving" : "saved"}`}>
+          {isSaving ? "Saving changes..." : "All changes saved"}
+        </span>
       </div>
       <textarea
         placeholder="Type continuous reflection summaries here..."
@@ -456,7 +524,7 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
                   ⏱ {formatDuration(timerSeconds || selectedTopic.timeSpent || 0)}
                 </div>
                 <button
-                  onClick={() => setTimerRunning(!timerRunning)}
+                  onClick={handleTimerToggle}
                   className={`yatra-study-timer-button ${timerRunning ? "running" : ""}`}
                 >
                   {timerRunning ? "Stop" : "Study"}
@@ -541,10 +609,149 @@ export default function YatraTracker({ yatra, user, onUpdate, onBack, onRecordSt
 
                   <div className="yatra-acharya-body">
                     {activeTab === "sadhana" && (
-                      <div className="yatra-acharya-sadhana-review">
-                        <button onClick={submitForMeditation} className="btn btn-gold yatra-meditation-submit-btn">
-                          Submit Notes for Acharya Evaluation
-                        </button>
+                      <div className="yatra-acharya-sadhana-review" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        {selectedTopic.aiAnalysis ? (
+                          <div className="yatra-ai-review-content" style={{ overflowY: "auto", flex: 1, paddingRight: 4 }}>
+                            {/* Mastery Score Badge */}
+                            <div className="insight-score-container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255, 255, 255, 0.03)", padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-color)", marginBottom: 16 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Sadhana Mastery Score</span>
+                              <span style={{ fontSize: 18, fontWeight: 800, color: "var(--accent-gold)" }}>{selectedTopic.aiAnalysis.score} / 100</span>
+                            </div>
+
+                            {/* Acharya Guidance */}
+                            <div className="insight-section" style={{ marginBottom: 16 }}>
+                              <span className="insight-section-title" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--accent-gold)", marginBottom: 6 }}>Acharya Guidance</span>
+                              <p className="insight-feedback" style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, background: "rgba(0,0,0,0.2)", padding: 12, borderRadius: 6, margin: 0 }}>
+                                {selectedTopic.aiAnalysis.feedback}
+                              </p>
+                            </div>
+
+                            {/* Grasped Concepts */}
+                            {selectedTopic.aiAnalysis.identifiedConcepts && selectedTopic.aiAnalysis.identifiedConcepts.length > 0 && (
+                              <div className="insight-section" style={{ marginBottom: 16 }}>
+                                <span className="insight-section-title" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--accent-gold)", marginBottom: 6 }}>Grasped Concepts</span>
+                                <div className="concepts-list" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {selectedTopic.aiAnalysis.identifiedConcepts.map((concept, i) => (
+                                    <span key={i} className="concept-tag" style={{ fontSize: 11, background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", color: "#10b981", padding: "2px 8px", borderRadius: 10 }}>{concept}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Gap Analysis */}
+                            {selectedTopic.aiAnalysis.gapSuggestions && selectedTopic.aiAnalysis.gapSuggestions.length > 0 && (
+                              <div className="insight-section" style={{ marginBottom: 16 }}>
+                                <span className="insight-section-title" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--accent-gold)", marginBottom: 6 }}>Gap Analysis</span>
+                                <ul className="gaps-list" style={{ paddingLeft: 20, margin: 0, fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+                                  {selectedTopic.aiAnalysis.gapSuggestions.map((gap, i) => (
+                                    <li key={i} className="gap-item" style={{ marginBottom: 4 }}>{gap}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Recommended Trials */}
+                            {selectedTopic.aiAnalysis.relevantTrials && selectedTopic.aiAnalysis.relevantTrials.length > 0 && (
+                              <div className="insight-section" style={{ marginBottom: 20 }}>
+                                <span className="insight-section-title" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--accent-gold)", marginBottom: 6 }}>Recommended Exercises</span>
+                                <div className="trials-list" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {selectedTopic.aiAnalysis.relevantTrials.map((trial, i) => {
+                                    const isUrl = trial.startsWith('http');
+                                    const href = isUrl ? trial : `https://www.google.com/search?q=${encodeURIComponent(trial)}`;
+                                    return (
+                                      <a 
+                                        key={i} 
+                                        href={href} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="trial-link"
+                                        style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#60a5fa", textDecoration: "none" }}
+                                      >
+                                        {trial} <ExternalLink size={10} />
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Active Recall Quiz */}
+                            {selectedTopic.aiAnalysis.recallQuestions && selectedTopic.aiAnalysis.recallQuestions.length > 0 && (
+                              <div className="quiz-section" style={{ borderTop: "1px solid var(--border-color)", paddingTop: 16, marginTop: 16 }}>
+                                <h4 className="insight-section-title" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--accent-gold)", margin: "0 0 12px 0" }}>
+                                  Active Recall Quiz (+15 Karma points)
+                                </h4>
+                                
+                                {roadmapData?.[`quiz_completed_${selectedTopic.id}`] || quizSubmitted ? (
+                                  <div className="quiz-completed-badge" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", color: "#10b981", padding: "6px 12px", borderRadius: 6, fontSize: 12 }}>
+                                    ✓ Active Recall Quiz Completed (+15 Karma)
+                                  </div>
+                                ) : (
+                                  <form onSubmit={handleQuizSubmit}>
+                                    {selectedTopic.aiAnalysis.recallQuestions.map((q, idx) => (
+                                      <div key={idx} className="quiz-question-box" style={{ marginBottom: 12 }}>
+                                        <div className="quiz-question-text" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Q{idx+1}: {q}</div>
+                                        <textarea 
+                                          className="quiz-answer-input"
+                                          rows={2}
+                                          placeholder="Type your brief explanation..."
+                                          value={quizAnswers[idx] || ""}
+                                          onChange={(e) => {
+                                            const updated = [...quizAnswers];
+                                            updated[idx] = e.target.value;
+                                            setQuizAnswers(updated);
+                                          }}
+                                          style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-color)", color: "var(--text-primary)", padding: 8, borderRadius: 4, fontSize: 12, resize: "none" }}
+                                        />
+                                      </div>
+                                    ))}
+                                    <button 
+                                      type="submit"
+                                      className="btn btn-gold"
+                                      style={{ fontSize: 12, padding: "6px 12px", minHeight: "auto", display: "flex", alignItems: "center", gap: 4 }}
+                                    >
+                                      Submit Quiz Answers
+                                    </button>
+                                  </form>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Re-evaluation button */}
+                            <button 
+                              onClick={submitForMeditation} 
+                              disabled={isMeditating} 
+                              className="btn btn-secondary"
+                              style={{ width: "100%", marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 12px", fontSize: 12 }}
+                            >
+                              {isMeditating ? (
+                                <>
+                                  <Loader size={14} className="spinner" />
+                                  Evaluating...
+                                </>
+                              ) : "Re-evaluate Reflection Notes"}
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: "center", padding: "20px 10px" }}>
+                            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 16 }}>
+                              Have you completed your study? Submit your Sadhana notes to have the Acharya evaluate your progress and generate a practice quiz.
+                            </p>
+                            <button 
+                              onClick={submitForMeditation} 
+                              disabled={isMeditating} 
+                              className="btn btn-gold"
+                              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 16px" }}
+                            >
+                              {isMeditating ? (
+                                <>
+                                  <Loader size={14} className="spinner" />
+                                  Acharya is meditating...
+                                </>
+                              ) : "Submit Notes for Acharya Evaluation"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                     {activeTab === "chat" && (

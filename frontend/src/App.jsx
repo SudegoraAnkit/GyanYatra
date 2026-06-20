@@ -508,8 +508,30 @@ const mergeRoadmapData = (local, remote) => {
       const localVal = Number(local[key]) || 0;
       const remoteVal = Number(remote[key]) || 0;
       merged[key] = Math.max(localVal, remoteVal);
+    } else if (key.startsWith("dailyTime_")) {
+      const localVal = Number(local[key]) || 0;
+      const remoteVal = Number(remote[key]) || 0;
+      merged[key] = Math.max(localVal, remoteVal);
+    } else if (key.startsWith("notes_")) {
+      const localVal = local[key] || "";
+      const remoteVal = remote[key] || "";
+      if (remoteVal.length > localVal.length) {
+        merged[key] = remoteVal;
+      } else {
+        merged[key] = localVal;
+      }
+    } else if (key === "roadmapStudyDates") {
+      const localDates = local[key] || {};
+      const remoteDates = remote[key] || {};
+      const mergedDates = { ...localDates };
+      Object.keys(remoteDates).forEach(dateStr => {
+        const localArr = localDates[dateStr] || [];
+        const remoteArr = remoteDates[dateStr] || [];
+        mergedDates[dateStr] = Array.from(new Set([...localArr, ...remoteArr]));
+      });
+      merged[key] = mergedDates;
     } else {
-      if (local[key] === undefined) {
+      if (!local[key]) {
         merged[key] = remote[key];
       }
     }
@@ -573,6 +595,7 @@ function App() {
   const [selectedYatraMode, setSelectedYatraMode] = useState('gallery')
   const [weeklyGoalMinutes, setWeeklyGoalMinutes] = useState(300)
   const [loadingYatras, setLoadingYatras] = useState(false)
+  const [isSavingYatra, setIsSavingYatra] = useState(false)
   const [editName, setEditName] = useState('')
   const [editBio, setEditBio] = useState('')
   const [editSkills, setEditSkills] = useState([])
@@ -767,7 +790,7 @@ function App() {
     }
   }, [user, fetchYatras]);
 
-  const handleSaveYatra = async (yatraData, immediate = false) => {
+  const handleSaveYatra = async (yatraData, immediate = false, skipSync = false) => {
     if (!user || !user.token) return;
 
     // 1. Update local UI states immediately to prevent input lag/overwriting
@@ -777,6 +800,10 @@ function App() {
     }
     
     latestYatraDataRef.current = yatraData;
+
+    if (skipSync) return;
+
+    setIsSavingYatra(true);
 
     if (saveYatraDebounceRef.current) {
       clearTimeout(saveYatraDebounceRef.current);
@@ -820,6 +847,8 @@ function App() {
           setErrorMsg("Error connecting to server while saving Yatra.");
           setTimeout(() => setErrorMsg(''), 5000);
         }
+      } finally {
+        setIsSavingYatra(false);
       }
     };
 
@@ -832,6 +861,60 @@ function App() {
       saveYatraDebounceRef.current = setTimeout(performSync, 1200); // 1.2s debounce
     }
   };
+
+  // Flush pending Yatra save automatically on view change or selected Yatra change
+  useEffect(() => {
+    if (saveYatraDebounceRef.current) {
+      const pendingData = latestYatraDataRef.current;
+      if (pendingData && user && user.token) {
+        clearTimeout(saveYatraDebounceRef.current);
+        saveYatraDebounceRef.current = null;
+        const method = pendingData.id ? 'PUT' : 'POST';
+        const url = pendingData.id ? `${API_BASE}/yatras/${pendingData.id}` : `${API_BASE}/yatras`;
+        fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify(pendingData)
+        })
+        .then(res => {
+          if (res.ok) {
+            fetchYatras();
+          }
+        })
+        .catch(err => console.error("Auto-flush on transition failed:", err))
+        .finally(() => setIsSavingYatra(false));
+      }
+    }
+  }, [currentView, selectedYatra?.id, user, fetchYatras]);
+
+  // Handle page unload / refresh for Custom Yatras
+  useEffect(() => {
+    const handleUnload = () => {
+      if (saveYatraDebounceRef.current) {
+        const data = latestYatraDataRef.current;
+        if (data && user && user.token) {
+          const method = data.id ? 'PUT' : 'POST';
+          const url = data.id ? `${API_BASE}/yatras/${data.id}` : `${API_BASE}/yatras`;
+          fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify(data),
+            keepalive: true
+          });
+        }
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+    };
+  }, [user]);
 
   // Cleanup / flush yatra sync on unmount or user change
   useEffect(() => {
@@ -855,7 +938,7 @@ function App() {
     };
   }, [user]);
 
-  const recordStudyEvent = useCallback((topicId, status, seconds = 0) => {
+  const recordStudyEvent = useCallback((topicId, status, seconds = 0, quizCompleted = false) => {
     const todayStr = getLocalYMD(new Date());
     let localRoadmap = {};
     try {
@@ -872,6 +955,10 @@ function App() {
 
     if (status) {
       localRoadmap[`status_${topicId}`] = status;
+    }
+
+    if (quizCompleted) {
+      localRoadmap[`quiz_completed_${topicId}`] = true;
     }
 
     const todaySeconds = localRoadmap[dailyKey] || 0;
@@ -2357,6 +2444,8 @@ function App() {
             setCurrentView('yatra-gallery');
           }}
           onRecordStudy={recordStudyEvent}
+          roadmapData={roadmapData}
+          isSaving={isSavingYatra}
         />
       ) : currentView === 'yatra-designer' ? (
         <YatraDesigner 

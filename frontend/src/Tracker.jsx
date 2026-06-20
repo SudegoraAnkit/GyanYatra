@@ -62,8 +62,30 @@ function mergeRoadmapData(local, remote) {
       const localVal = Number(local[key]) || 0;
       const remoteVal = Number(remote[key]) || 0;
       merged[key] = Math.max(localVal, remoteVal);
+    } else if (key.startsWith("dailyTime_")) {
+      const localVal = Number(local[key]) || 0;
+      const remoteVal = Number(remote[key]) || 0;
+      merged[key] = Math.max(localVal, remoteVal);
+    } else if (key.startsWith("notes_")) {
+      const localVal = local[key] || "";
+      const remoteVal = remote[key] || "";
+      if (remoteVal.length > localVal.length) {
+        merged[key] = remoteVal;
+      } else {
+        merged[key] = localVal;
+      }
+    } else if (key === "roadmapStudyDates") {
+      const localDates = local[key] || {};
+      const remoteDates = remote[key] || {};
+      const mergedDates = { ...localDates };
+      Object.keys(remoteDates).forEach(dateStr => {
+        const localArr = localDates[dateStr] || [];
+        const remoteArr = remoteDates[dateStr] || [];
+        mergedDates[dateStr] = Array.from(new Set([...localArr, ...remoteArr]));
+      });
+      merged[key] = mergedDates;
     } else {
-      if (local[key] === undefined) {
+      if (!local[key]) {
         merged[key] = remote[key];
       }
     }
@@ -199,6 +221,31 @@ function useStorage(user) {
           }).catch(err => console.error("Failed unmount roadmap sync:", err));
         }
       }
+    };
+  }, [user]);
+
+  // Handle page unload / close for Java Mastery Tracker
+  useEffect(() => {
+    const handleUnload = () => {
+      if (pendingSyncRef.current) {
+        const payload = latestDataRef.current;
+        if (user && user.id && user.token) {
+          const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
+          fetch(`${API_BASE}/yatra/users/${user.id}/roadmap`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+          });
+        }
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
     };
   }, [user]);
 

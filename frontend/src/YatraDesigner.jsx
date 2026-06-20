@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Eye, EyeOff, Save, X, BookOpen, Clock, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function YatraDesigner({ yatra, onSave, onClose }) {
@@ -8,6 +8,9 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
   const [topics, setTopics] = useState(yatra?.topics || []);
   const [collapsedNodes, setCollapsedNodes] = useState({});
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+
+  const drawerRef = useRef(null);
+  const titleInputRef = useRef(null);
 
   const findNodeById = (list, id) => {
     for (let item of list) {
@@ -55,6 +58,39 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
       setTopics(updateTree(topics));
       setCollapsedNodes(prev => ({ ...prev, [parentId]: false })); // Expand parent
     }
+    setSelectedNodeId(newTopic.id);
+  };
+
+  // Auto-focus title input when selected node changes
+  useEffect(() => {
+    if (selectedNodeId) {
+      setTimeout(() => {
+        if (titleInputRef.current) {
+          titleInputRef.current.focus();
+          titleInputRef.current.select();
+        }
+      }, 50);
+    }
+  }, [selectedNodeId]);
+
+  // Scroll drawer into view on mobile
+  useEffect(() => {
+    if (selectedNodeId && window.innerWidth <= 768 && drawerRef.current) {
+      drawerRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedNodeId]);
+
+  const hasChanges = 
+    title !== (yatra?.title || "") ||
+    description !== (yatra?.description || "") ||
+    isPublic !== (yatra?.isPublic ?? false) ||
+    JSON.stringify(topics) !== JSON.stringify(yatra?.topics || []);
+
+  const handleClose = () => {
+    if (hasChanges && !window.confirm("You have unsaved changes. Are you sure you want to close?")) {
+      return;
+    }
+    onClose();
   };
 
   const updateTopic = (id, fields) => {
@@ -117,7 +153,7 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
             Create a custom study path. Every topic can house timers, notes, video logs, and AI Acharya analysis.
           </p>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
+        <button onClick={handleClose} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
           <X size={20} />
         </button>
       </div>
@@ -201,7 +237,7 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
         </div>
 
         {/* Drawer Area */}
-        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", height: "fit-content", minHeight: "350px" }}>
+        <div ref={drawerRef} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "16px", display: "flex", flexDirection: "column", height: "fit-content", minHeight: "350px" }}>
           {selectedNode ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "14px", height: "100%" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
@@ -214,6 +250,7 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
               <div>
                 <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Topic Title</label>
                 <input
+                  ref={titleInputRef}
                   type="text"
                   placeholder="e.g. Master Replication"
                   value={selectedNode.title}
@@ -283,9 +320,8 @@ export default function YatraDesigner({ yatra, onSave, onClose }) {
         </div>
       </div>
 
-      {/* Action Footer */}
       <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", borderTop: "1px solid var(--border-color)", paddingTop: "16px" }}>
-        <button onClick={onClose} className="btn btn-secondary" style={{ padding: "8px 16px" }}>
+        <button onClick={handleClose} className="btn btn-secondary" style={{ padding: "8px 16px" }}>
           Cancel
         </button>
         <button onClick={handleSave} className="btn btn-gold" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 20px" }}>
