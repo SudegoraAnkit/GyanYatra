@@ -1,8 +1,42 @@
-# GyanYatra: AI-Powered Learning Synthesizer & Mastery Dashboard
+# GyanYatra: AI-Powered Learning 
 
 ----
 > [Access now](https://gyan-yatra-seven.vercel.app/)
 ----
+
+---
+
+## 🎯 What is GyanYatra? (Core Purpose)
+
+**GyanYatra** is an **AI-powered learning and retention system** designed to turn temporary information consumption into long-term technical mastery.
+
+Instead of letting engineers and students forget what they read in blogs, documentation, or tutorials, GyanYatra structures, curates, and reinforces complex engineering concepts into organized knowledge graphs and learning paths.
+
+---
+
+## 🛑 What Problem Does It Solve?
+
+1. **The "Tutorial Hell" & Memory Fade Problem:**
+* **Problem:** Learners spend hours watching tutorials or reading technical docs, but forget 80% of the material within a week because there is no active recall or structured review mechanism.
+* **Solution:** GyanYatra uses AI-driven mechanisms to actively test, summarize, and reinforce concepts over time to boost knowledge retention.
+
+
+2. **Information Overload & Fragmented Notes:**
+* **Problem:** Technical notes are usually scattered across random bookmark folders, Notion pages, and GitHub gists.
+* **Solution:** GyanYatra organizes notes and tutorials into structured, step-by-step learning roadmaps with clear paths.
+
+
+3. **Passive Reading vs. Active Knowledge Building:**
+* **Problem:** Simply reading documentation leads to a false sense of understanding.
+* **Solution:** It treats documentation as an interactive product, transforming raw reading material into digestible, structured knowledge workflows.
+
+### 💡 Core Value Propositions
+
+* 🧠 **Boost Knowledge Retention:** AI-assisted systems designed to help your brain lock in complex ideas.
+* 🗺️ **Curated Pathways:** No more guessing what to study next—follow clear, structured engineering roadmaps.
+* 📂 **Centralized Engineering Hub:** All your technical notes, tutorials, and architecture concepts organized in one place.
+
+
 GyanYatra is a production-grade, AI-powered learning organizer that transforms passive video content consumption (e.g., YouTube lectures, system design talks, coding tutorials) into verified active technical mastery. By forcing active cognitive reflection, generating automated gap analyses, providing spaced repetition prompts, and incentivizing consistency through gamified study streaks and community leaderboards, GyanYatra bridges the gap between understanding a tutorial and mastering a skill.
 
 ---
